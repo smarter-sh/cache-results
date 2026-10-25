@@ -16,8 +16,20 @@ class TestPackage(SimpleTestCase):
         self.assertTrue(callable(cache_results.cache_results))
         self.assertTrue(issubclass(cache_results.CacheKeyArgumentError, TypeError))
         self.assertEqual(
-            sorted(cache_results.__all__), ["CacheKeyArgumentError", "CacheKeyEncoder", "__version__", "cache_results"]
+            sorted(cache_results.__all__),
+            ["CacheKeyArgumentError", "CacheKeyEncoder", "LazyCache", "__version__", "cache_results", "lazy_cache"],
         )
+        self.assertIsInstance(cache_results.lazy_cache, cache_results.LazyCache)
+
+    def test_modules_are_not_shadowed(self):
+        """Each module imports as a module: no name exported by the package hides one, as lazy_cache once did."""
+        import importlib  # pylint: disable=import-outside-toplevel
+        import types  # pylint: disable=import-outside-toplevel
+
+        for name in ("colors", "conf", "decorators", "keys", "lazy", "sentinels"):
+            module = importlib.import_module(f"cache_results.{name}")
+            self.assertIsInstance(getattr(cache_results, name), types.ModuleType, name)
+            self.assertIs(getattr(cache_results, name), module)
 
     def test_version(self):
         """The version is a semantic version, as semantic-release writes it."""

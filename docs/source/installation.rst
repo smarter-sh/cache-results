@@ -12,11 +12,11 @@ Requirements
 Install the package
 -------------------
 
-cache-results is not on PyPI yet. Until it is, install it from GitHub:
+Install it from PyPI:
 
 .. code-block:: console
 
-    $ pip install "cache-results @ git+https://github.com/smarter-sh/cache-results"
+    $ pip install cache-results
 
 Its only dependencies are Django and asgiref. To use Redis, install a Redis
 backend too, e.g. `django-redis <https://github.com/jazzband/django-redis>`__:

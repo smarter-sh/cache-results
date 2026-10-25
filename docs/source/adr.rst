@@ -27,3 +27,4 @@ the alternatives considered, and its consequences.
    adr/017-packaging
    adr/018-documentation
    adr/019-release-on-push
+   adr/020-lazy-cache-and-colors

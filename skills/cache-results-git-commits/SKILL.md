@@ -96,9 +96,8 @@ four-bullet body is too brief.
 3. Measure the header with `wc -c`.
 4. Start the response with a one-line `Written for:` audience note.
 
-A change made in both this repository and Smarter's copy
-(`../smarter/smarter/smarter/lib/cache/`) gets one commit command per
-repository. In `../smarter`, follow Smarter's own `smarter-git-commits` skill:
+A change that Smarter adopts (a new api, then Smarter's pin bump and its
+use of it) gets one commit command per repository. In `../smarter`, follow Smarter's own `smarter-git-commits` skill:
 its scope there is `cache`.
 
 See [references/canonical-git-commit.md](references/canonical-git-commit.md)

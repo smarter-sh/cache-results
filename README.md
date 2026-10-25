@@ -49,15 +49,17 @@ reads and third-party api calls across many application servers.
   wait for the first one to compute it.
 - **Safe during startup.** A function called before Django's apps are ready
   runs uncached, rather than initialize the cache framework too early.
+- **`lazy_cache`**, Django's cache imported only once Django is ready, for
+  raw `get()` and `set()`.
 - **Configurable** through one Django setting, `CACHE_RESULTS`.
 - Depends only on Django and asgiref.
 
 ## Installation
 
-cache-results is not on PyPI yet. Until it is, install it from GitHub:
+Install it from PyPI:
 
 ```console
-pip install "cache-results @ git+https://github.com/smarter-sh/cache-results"
+pip install cache-results
 ```
 
 It needs Python 3.10 or newer and Django 4.2 or newer, and works with any
@@ -143,11 +145,31 @@ CACHE_RESULTS = {
     # a callable(text, event) that formats the start of each log message, where
     # event is "hit", "miss", "invalidate" or "".
     "LOG_PREFIX": None,
+    # with LOG_PREFIX = "cache_results.colors.log_prefix", which colors log
+    # messages by event: a dict from event to ANSI code.
+    "LOG_COLORS": None,
 }
 ```
 
 Callables and classes are given as dotted paths or as the objects themselves.
 Settings are read on every call, so `override_settings` works in tests.
+
+## lazy_cache
+
+For raw `get()` and `set()`, use `lazy_cache` in place of
+`django.core.cache.cache`. It has the same api, and imports Django's cache only
+on first use, once Django's apps are ready: importing it while Django is
+starting can leave it on a local-memory backend that persists nothing.
+
+```python
+from cache_results import lazy_cache as cache
+
+cache.set("my_key", "my_value", timeout=300)
+cache.get("my_key")  # "my_value"
+```
+
+On first use it checks the cache, and warns when the `default` cache is a
+local-memory or dummy backend.
 
 ## Decorator options
 

@@ -15,7 +15,7 @@ They are adapted from the skills of
 package's code began, so that both are developed the same way. Smarter's skills
 that only concern its platform (Docker, Kubernetes, React, migrations, ...)
 have no counterpart here. Load them from `../smarter/skills/` when a task leads
-into Smarter, e.g. to make the same change in Smarter's copy of the code.
+into Smarter, e.g. to bump Smarter's pin of this package or change its hooks.
 
 ## What's here
 

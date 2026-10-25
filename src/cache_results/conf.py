@@ -178,6 +178,19 @@ class CacheResultsSettings:
         """
         return self._flag("VERBOSE_LOGGING")
 
+    def option(self, name: str, default: object = None) -> object:
+        """
+        Return any other entry of the setting, for a hook that has its own, e.g. ``LOG_COLORS``.
+
+        :param name: The entry's name.
+        :type name: str
+        :param default: The value when the entry is not set.
+        :type default: object
+        :return: The entry's value, or ``default``.
+        :rtype: object
+        """
+        return self._values.get(name, default)
+
     def log_prefix(self, text: str, event: str = "") -> str:
         """
         Format the start of a log message with the ``LOG_PREFIX`` callable.
