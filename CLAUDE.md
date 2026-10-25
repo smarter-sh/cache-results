@@ -7,17 +7,23 @@ function's results by its arguments. It is published to PyPI as
 `cache-results`, with the import name `cache_results`. It grew out of the
 caching layer of [Smarter](https://github.com/smarter-sh/smarter) (usually
 checked out beside this repository as `../smarter`), which uses it through its
-own hooks in `smarter/smarter/lib/cache/hooks.py`.
+own hooks in `smarter/smarter/lib/cache/hooks.py`. Its documentation is
+published to https://docs.cache-results.smarter.sh/.
+
+Detailed know-how lives in the Agent Skills under `skills/` (symlinked to
+`.claude/skills`). **Load `cache-results-development` first for any change.**
+Its table says which narrower `cache-results-*` skill covers each kind of
+work. This file holds only what applies to nearly every task.
 
 ## Hard rules
 
 1. **Never run git write commands**, here or in `../smarter`. "Write a git
    commit" means print the command as text: one `git commit` with one `-m` per
    paragraph, conventional-commit header of 72 characters or fewer, authored by
-   `Claude <noreply@anthropic.com>`, co-authored by
-   `Lawrence McDaniel <lpm0073@gmail.com>`.
+   `Lawrence McDaniel <lpm0073@gmail.com>`, co-authored by
+   `Claude <noreply@anthropic.com>`. See `cache-results-git-commits`.
 2. **Run the tests yourself** after any change (`make test`), and against
-   Redis when you touch how the cache is read or written. Report failures
+   Redis (`make test-redis`) when you touch how the cache is read or written. Report failures
    honestly.
 3. **Depend only on Django and asgiref.** Nothing project-specific belongs
    here: a project adapts the decorator through the `CACHE_RESULTS` setting
@@ -45,6 +51,14 @@ own hooks in `smarter/smarter/lib/cache/hooks.py`.
 | `src/cache_results/sentinels.py`  | The markers for a cache miss and a cached `None`            |
 | `tests/`                          | pytest-django tests, one module per source module           |
 | `tests/settings.py`               | Test settings: local-memory cache, or Redis from an env var |
+| `.github/workflows/ci.yml`        | CI: lint, test matrix and Redis, build                      |
+| `.github/workflows/release.yml`   | Release: semantic-release, build, PyPI                      |
+| `release.config.js`               | semantic-release: version file, changelog                   |
+| `codecov.yml`                     | Codecov targets: 95% project and patch                      |
+| `requirements/in/*.in`            | Unpinned requirements, compiled into `requirements/*.txt`   |
+| `docs/source/`                    | Sphinx docs: guide, api reference, ADRs (`adr/`)            |
+| `terraform/docs/`                 | The docs site's AWS resources: S3, CloudFront, ACM, Route53 |
+| `skills/`                         | Agent Skills, symlinked to `.claude/skills`                 |
 
 ## Conventions
 

@@ -1,0 +1,124 @@
+---
+name: cache-results-release
+description: Use when working on cache-results' CI/CD, dependencies or releases - the requirements files (requirements/in/constraints.in, base.in, local.in, compiled by make python-requirements), the CI workflow (lint, test matrix, Redis, build), Codecov, semantic-release (release.config.js, versions, the changelog, tags, prereleases from alpha and beta), the Release workflow and PyPI trusted publishing, supported Python and Django versions, and keeping Smarter's copy of the code in step - or when asked why CI failed, what the next version will be, or how to cut a release.
+---
+
+# cache-results CI/CD and Releases
+
+## CI (`.github/workflows/ci.yml`)
+
+Runs on every push to `main`, `alpha` and `beta`, and on every pull request:
+
+| Job     | What it does                                                                        |
+| ------- | ----------------------------------------------------------------------------------- |
+| `lint`  | `pre-commit run --all-files`: the same hooks as `make lint`                         |
+| `test`  | `coverage run -m pytest` on six Python/Django pairs, against the local-memory cache |
+| `redis` | the same on Python 3.14 with Django 6.0, against a Redis service                    |
+| `build` | after the others: `python -m build`, `twine check --strict`, the `dist` artifact    |
+
+Every `make` target has a CI counterpart, and the other way round: keep them
+consistent when you change either.
+
+```console
+gh run list --limit 5
+gh run view <id>            # jobs and annotations
+gh run view <id> --log-failed
+```
+
+- Each test job uploads `coverage.xml` to **Codecov** (`codecov.yml`: 95%
+  project and patch targets), flagged `locmem` or `redis`. Codecov merges them.
+  The upload needs the repository secret `CODECOV_TOKEN`, and never fails CI.
+- Action versions are pinned to a major (`actions/checkout@v7`). Look up the
+  latest with `gh api repos/<owner>/<action>/releases/latest --jq .tag_name`
+  rather than from memory; an old major shows a Node.js deprecation
+  annotation.
+- Lint workflows with actionlint before committing:
+  `docker run --rm -v "$(pwd)":/repo --workdir /repo rhysd/actionlint:latest`.
+
+## Versions come from commits: semantic-release
+
+`release.config.js` configures semantic-release. From the conventional
+commits since the last tag (`cache-results-git-commits`):
+
+- `fix` and `perf` make a patch release, `feat` a minor one, a
+  `BREAKING CHANGE:` footer a major one. Other types make none.
+- It writes the version into `src/cache_results/__version__.py` (which
+  `pyproject.toml` reads, through hatchling), updates `CHANGELOG.md`, commits
+  both as `chore(release): <version> [skip ci]`, tags `v<version>`, and
+  publishes a GitHub release.
+- **Never edit `__version__.py` or `CHANGELOG.md` by hand**, and never write a
+  `chore(release)` commit.
+- `main` makes releases. `alpha` and `beta` make prereleases, e.g.
+  `0.2.0-alpha.1`, which Python's packaging normalizes to `0.2.0a1`.
+- With no tags at all, semantic-release's first release is `1.0.0`. The
+  project starts at `0.1.0` by tagging the first feature commit `v0.1.0`
+  (the user does this; never run `git tag`).
+
+## The Release workflow (`.github/workflows/release.yml`)
+
+Run by hand, never on push:
+
+```console
+make release-dry-run     # gh workflow run release.yml -f dry_run=true: shows the next version
+make release             # the real thing
+gh run watch
+```
+
+1. `release`: semantic-release, as above. A dry run stops here, and the run's
+   summary shows the last and next versions.
+2. `build`: checks out the new tag, builds, `twine check --strict`, and fails
+   if `__version__.py` doesn't match the release.
+3. `publish`: uploads to PyPI with **trusted publishing** (OIDC, no token). It
+   runs only when the repository variable `PUBLISH_TO_PYPI` is `"true"`, in the
+   `pypi` environment, which must be registered as a trusted publisher of the
+   `cache-results` project on PyPI.
+
+Pushing the release commit to a protected `main` needs the repository secret
+`PAT`. Without it, the workflow uses `GITHUB_TOKEN`.
+
+## Dependencies and requirements
+
+Laid out as Smarter's (`../smarter/smarter/requirements/`), see ADR-013:
+
+| File                                 | What it holds                                                           |
+| ------------------------------------ | ----------------------------------------------------------------------- |
+| `pyproject.toml`                     | What the **published** package needs: Django, asgiref, and the extras   |
+| `requirements/in/constraints.in`     | Global version constraints, with a reason each. Every `.in` includes it |
+| `requirements/in/base.in`            | The runtime requirements, unpinned                                      |
+| `requirements/in/local.in`           | `-r base.in`, plus every developer tool, unpinned and commented         |
+| `requirements/base.txt`, `local.txt` | **Generated** by pip-compile: every version pinned. Never edit by hand  |
+
+```console
+make python-requirements   # pip-compile --upgrade both .in files, then install local.txt and the package
+make init                  # rebuild venv/ from local.txt, install the package editable, and the git hooks
+```
+
+- A new development tool goes into `in/local.in`, with a comment saying what
+  it is for, then `make python-requirements`. A new runtime dependency is a
+  decision (ADR-001 allows only Django and asgiref): it goes into
+  `pyproject.toml` **and** `in/base.in`, with the same lower bound in
+  `constraints.in`.
+- A version that must be avoided goes into `constraints.in`, with the reason,
+  as Smarter's does (e.g. `pip-tools>=7.6.1`).
+- `--no-strip-extras` keeps `coverage[toml]`'s extra in `local.txt`.
+- The compiled files are committed, as a `build(deps):` commit.
+- CI installs the package with its extras and an unpinned Django of each
+  matrix version, not `local.txt`, so that it tests what users install.
+
+## Supported versions
+
+Python 3.10 and newer, Django 4.2 and newer. Each `ci.yml` matrix entry pairs a
+Django release with Python versions it supports. When a Django or Python
+release arrives or reaches end of life, change together: the matrix, the
+`pyproject.toml` classifiers (and `requires-python`), the README's badges and
+installation text, and `CLAUDE.md`. Dropping a version is a breaking change.
+
+## Smarter's copy
+
+Smarter (`../smarter`) keeps a copy of the core in
+`smarter/smarter/lib/cache/` until it installs this package from PyPI. Until
+then, a change here is made there too, in a commit of Smarter's own
+(`../smarter/skills/smarter-git-commits`, scope `cache`), and tested in its
+containers (`../smarter/skills/smarter-docker-environment`). Once Smarter
+depends on the package, a release here reaches Smarter only when its
+requirements are updated.
