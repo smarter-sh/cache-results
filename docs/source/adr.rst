@@ -26,3 +26,4 @@ the alternatives considered, and its consequences.
    adr/016-code-quality
    adr/017-packaging
    adr/018-documentation
+   adr/019-release-on-push
