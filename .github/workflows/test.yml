@@ -1,0 +1,60 @@
+---
+#------------------------------------------------------------------------------
+# Run the tests on every supported pair of Python and Django versions, against
+# Django's local-memory cache, and once against Redis.
+#------------------------------------------------------------------------------
+name: Test
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, alpha, beta]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      # the Python versions that each Django release supports.
+      matrix:
+        include:
+          - { python: "3.10", django: "4.2" }
+          - { python: "3.12", django: "4.2" }
+          - { python: "3.10", django: "5.2" }
+          - { python: "3.13", django: "5.2" }
+          - { python: "3.12", django: "6.0" }
+          - { python: "3.14", django: "6.0" }
+    name: Python ${{ matrix.python }}, Django ${{ matrix.django }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install
+        run: pip install -e ".[test]" "Django~=${{ matrix.django }}.0"
+      - name: Test
+        run: |
+          coverage run -m pytest
+          coverage report
+
+  redis:
+    runs-on: ubuntu-latest
+    name: Python 3.14, Django 6.0, Redis
+    services:
+      redis:
+        image: redis:7
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 5s --health-timeout 3s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+      - name: Install
+        run: pip install -e ".[test,redis]" "Django~=6.0.0"
+      - name: Test
+        env:
+          CACHE_RESULTS_TEST_REDIS_URL: redis://localhost:6379/15
+        run: python -m pytest

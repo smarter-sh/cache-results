@@ -1,0 +1,75 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "cache-results"
+dynamic = ["version"]
+description = "A Django decorator that caches a function's results by its arguments, with safe keys, async support and invalidation."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.10"
+authors = [{ name = "Lawrence McDaniel", email = "lpm0073@gmail.com" }]
+keywords = ["django", "cache", "caching", "decorator", "memoize", "redis"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Environment :: Web Environment",
+  "Framework :: Django",
+  "Framework :: Django :: 4.2",
+  "Framework :: Django :: 5.2",
+  "Framework :: Django :: 6.0",
+  "Intended Audience :: Developers",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+  "Typing :: Typed",
+]
+dependencies = ["Django>=4.2", "asgiref>=3.6"]
+
+[project.optional-dependencies]
+test = ["pytest>=8", "pytest-django>=4.9", "coverage[toml]>=7"]
+redis = ["django-redis>=5.4"]
+
+[project.urls]
+Homepage = "https://github.com/smarter-sh/cache-results"
+Source = "https://github.com/smarter-sh/cache-results"
+Issues = "https://github.com/smarter-sh/cache-results/issues"
+Changelog = "https://github.com/smarter-sh/cache-results/blob/main/CHANGELOG.md"
+
+[tool.hatch.version]
+path = "src/cache_results/__version__.py"
+
+[tool.hatch.build.targets.sdist]
+include = ["src/cache_results", "tests", "README.md", "LICENSE", "CHANGELOG.md"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/cache_results"]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "tests.settings"
+pythonpath = ["."]
+testpaths = ["tests"]
+addopts = "-ra"
+
+[tool.coverage.run]
+source = ["cache_results"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+fail_under = 95
+
+[tool.isort]
+profile = "black"
+line_length = 120
+
+[tool.black]
+line-length = 120
+target-version = ["py310"]
