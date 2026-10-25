@@ -83,3 +83,7 @@ line_length = 120
 [tool.black]
 line-length = 120
 target-version = ["py310"]
+
+# pylint isn't one of the lint hooks, but editors run it. Match black and flake8.
+[tool.pylint.format]
+max-line-length = 120

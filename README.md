@@ -196,7 +196,7 @@ make coverage   # run the tests with a coverage report
 make lint       # run the pre-commit hooks on every file
 make typecheck  # check the type annotations with mypy
 make sphinx-build   # build the Sphinx docs into docs/build/html
-make sphinx-publish # publish them to docs.cache-results.smarter.sh
+make sphinx-publish # publish them to docs.cache-results.smarter.sh (releases do it themselves)
 make build      # build the sdist and wheel, and check them
 make python-requirements  # recompile the pinned requirements/*.txt
 ```
@@ -211,7 +211,8 @@ push to `main`, `alpha` and `beta` as the first step of the Release workflow.
 Coverage is reported to [Codecov](https://codecov.io/gh/smarter-sh/cache-results).
 When CI passes, the Release workflow releases with semantic-release, from the
 conventional commit messages, and publishes to PyPI from `main` (or to TestPyPI
-from `alpha` and `beta`). `make release-dry-run` shows the next version.
+from `alpha` and `beta`). Once PyPI has a release from `main`, the same
+workflow publishes its documentation to docs.cache-results.smarter.sh. `make release-dry-run` shows the next version.
 
 ## Contributing
 

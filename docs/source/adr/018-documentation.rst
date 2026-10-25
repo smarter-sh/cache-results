@@ -18,8 +18,10 @@ theme, published to https://docs.cache-results.smarter.sh/. The api reference is
 generated from docstrings by autodoc. ``make sphinx-build`` treats every warning
 as an error. The site is served by CloudFront from a private S3 bucket, with an
 ACM certificate and Route53 records, all defined in Terraform in
-``terraform/docs`` and changed only through it. ``make sphinx-publish`` uploads a
-build and invalidates CloudFront. The AWS account id is read from the caller's
+``terraform/docs`` and changed only through it. The Release workflow publishes
+the site after every release from ``main``, once PyPI has it
+(:doc:`ADR-021 <021-publish-docs-on-release>`), and ``make sphinx-publish``
+publishes between releases. The AWS account id is read from the caller's
 credentials at run time, and never committed.
 
 Alternatives Considered
@@ -37,7 +39,7 @@ Consequences
 
 - **Negative:**
 
-  - Publishing needs AWS credentials for the account, so it is done by a maintainer, not by CI.
+  - Publishing between releases needs AWS credentials for the account, so it is done by a maintainer.
   - The site shows one version, the latest published.
 
 Related ADRs
