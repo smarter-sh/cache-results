@@ -1,5 +1,13 @@
 # cache-results
 
+[![CI](https://github.com/smarter-sh/cache-results/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/smarter-sh/cache-results/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/smarter-sh/cache-results/graph/badge.svg)](https://codecov.io/gh/smarter-sh/cache-results)
+[![Latest Release](https://img.shields.io/github/v/release/smarter-sh/cache-results?label=release)](https://github.com/smarter-sh/cache-results/releases)
+[![Python](https://img.shields.io/badge/python-3.10%2B-blue?logo=python&logoColor=white)](https://www.python.org/)
+[![Django](https://img.shields.io/badge/django-4.2%2B-0C4B33?logo=django&logoColor=white)](https://www.djangoproject.com/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Docs](https://img.shields.io/badge/docs-docs.cache--results.smarter.sh-blue?logo=readthedocs)](https://docs.cache-results.smarter.sh/)
+
 A Django decorator that caches a function's results by its arguments, in any
 Django cache, such as Redis.
 
@@ -16,6 +24,8 @@ get_book(42)             # computed and cached
 get_book(42)             # served from the cache
 get_book.invalidate(42)  # clears that entry
 ```
+
+**Documentation: <https://docs.cache-results.smarter.sh/>**
 
 cache-results grew out of the caching layer of
 [Smarter](https://github.com/smarter-sh/smarter), where it caches database
@@ -155,13 +165,28 @@ Settings are read on every call, so `override_settings` works in tests.
 ## Development
 
 ```console
-make init       # create .venv, install the package and its test tools, install the git hooks
+make            # list every command
+make init       # create venv/ from requirements/local.txt, install the package and the git hooks
 make test       # run the tests against the local-memory cache
+make test-redis # run the tests against Redis
 make coverage   # run the tests with a coverage report
+make lint       # run the pre-commit hooks on every file
+make typecheck  # check the type annotations with mypy
+make sphinx-build   # build the Sphinx docs into docs/build/html
+make sphinx-publish # publish them to docs.cache-results.smarter.sh
+make build      # build the sdist and wheel, and check them
+make python-requirements  # recompile the pinned requirements/*.txt
 ```
 
-To run the tests against Redis, set `CACHE_RESULTS_TEST_REDIS_URL`, e.g. to
-`redis://localhost:6379/15`. The tests clear that database.
+`make test-redis` uses `redis://localhost:6379/15` unless you set
+`REDIS_URL`, and clears that database. Running pytest yourself, set
+`CACHE_RESULTS_TEST_REDIS_URL` instead.
+
+CI runs the hooks, the tests on every supported pair of Python and Django
+versions and against Redis, and a build, on every push and pull request.
+Coverage is reported to [Codecov](https://codecov.io/gh/smarter-sh/cache-results).
+Releases are made by the Release workflow with semantic-release, from the
+conventional commit messages (`make release-dry-run` shows the next version).
 
 ## Contributing
 
@@ -174,8 +199,8 @@ starting on a larger change, so that we can agree on its design first.
    standard (black, flake8, isort, pyupgrade, codespell, bandit, Prettier) and
    check each commit message.
 3. Make your change with its tests. `make coverage` must stay at 95% or
-   more, and `make test` must pass against both the local-memory cache and
-   Redis (see above).
+   more, and both `make test` and `make test-redis` must pass. CI checks all
+   of this on your pull request.
 4. Write [conventional commits](https://www.conventionalcommits.org/), e.g.
    `fix(keys): sort frozensets of tuples`. Releases are versioned from them:
    `fix` makes a patch release, `feat` a minor one.

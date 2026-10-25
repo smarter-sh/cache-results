@@ -36,6 +36,8 @@ dependencies = ["Django>=4.2", "asgiref>=3.6"]
 [project.optional-dependencies]
 test = ["pytest>=8", "pytest-django>=4.9", "coverage[toml]>=7"]
 redis = ["django-redis>=5.4"]
+typing = ["mypy>=1.10", "django-stubs>=5"]
+docs = ["sphinx>=8", "sphinx-rtd-theme>=3", "sphinx-copybutton>=0.5", "sphinx-notfound-page>=1", "sphinx-sitemap>=2.6"]
 
 [project.urls]
 Homepage = "https://github.com/smarter-sh/cache-results"
@@ -65,6 +67,13 @@ branch = true
 [tool.coverage.report]
 show_missing = true
 fail_under = 95
+
+[tool.mypy]
+plugins = ["mypy_django_plugin.main"]
+files = ["src/cache_results"]
+
+[tool.django-stubs]
+django_settings_module = "tests.settings"
 
 [tool.isort]
 profile = "black"

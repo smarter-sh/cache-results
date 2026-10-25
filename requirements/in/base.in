@@ -1,0 +1,14 @@
+# -----------------------------------------------------------------------------
+# written by: Lawrence McDaniel
+#             https://lawrencemcdaniel.com
+#
+# usage:      The package's runtime requirements: the only dependencies of
+#             cache-results, as pyproject.toml publishes them.
+#
+#             pip-compile --upgrade requirements/in/base.in -o requirements/base.txt
+# -----------------------------------------------------------------------------
+
+-r constraints.in
+
+Django                              # the cache framework, settings and app registry
+asgiref                             # sync_to_async, for async functions
