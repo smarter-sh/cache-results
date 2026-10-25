@@ -1,4 +1,4 @@
-"""Tests of cache_results.lazy_cache, Django's cache imported once Django is ready."""
+"""Tests of cache_results.lazy, Django's cache imported once Django is ready."""
 
 from unittest.mock import patch
 
@@ -7,7 +7,7 @@ from django.core.cache.backends.locmem import LocMemCache
 from django.test import SimpleTestCase
 
 from cache_results import lazy_cache
-from cache_results.lazy_cache import LazyCache
+from cache_results.lazy import LazyCache
 
 
 class TestLazyCache(SimpleTestCase):
@@ -27,7 +27,7 @@ class TestLazyCache(SimpleTestCase):
     def test_before_apps_are_ready(self):
         """Before Django's apps are ready, the cache is None and a warning is logged."""
         lazy = LazyCache()
-        with patch("cache_results.lazy_cache.apps") as apps, self.assertLogs("cache_results.lazy_cache", "WARNING"):
+        with patch("cache_results.lazy.apps") as apps, self.assertLogs("cache_results.lazy", "WARNING"):
             apps.ready = False
             self.assertIsNone(lazy.cache)
             self.assertFalse(lazy.ready)
@@ -92,7 +92,7 @@ class TestLazyCache(SimpleTestCase):
 
     def test_first_use_checks_the_cache(self):
         """On first use the cache is checked, and a local-memory default cache is warned about."""
-        with self.assertLogs("cache_results.lazy_cache", "DEBUG") as logs:
+        with self.assertLogs("cache_results.lazy", "DEBUG") as logs:
             cache = LazyCache().cache
         output = "\n".join(logs.output)
         if isinstance(cache, LocMemCache):
@@ -102,9 +102,9 @@ class TestLazyCache(SimpleTestCase):
     def test_check_reports_a_broken_cache(self):
         """A cache that loses what was written, or raises, is logged as an error."""
         lazy = LazyCache()
-        with patch.object(LocMemCache, "get", return_value=None), self.assertLogs("cache_results.lazy_cache", "ERROR"):
+        with patch.object(LocMemCache, "get", return_value=None), self.assertLogs("cache_results.lazy", "ERROR"):
             lazy._check(LocMemCache("broken", {}))  # pylint: disable=protected-access
         with patch.object(LocMemCache, "set", side_effect=ConnectionError("down")):
-            with self.assertLogs("cache_results.lazy_cache", "ERROR") as logs:
+            with self.assertLogs("cache_results.lazy", "ERROR") as logs:
                 lazy._check(LocMemCache("broken", {}))  # pylint: disable=protected-access
         self.assertIn("down", "\n".join(logs.output))

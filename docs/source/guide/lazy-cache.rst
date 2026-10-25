@@ -1,7 +1,7 @@
 Lazy Cache
 ==========
 
-For raw ``get()`` and ``set()``, use :data:`~cache_results.lazy_cache.lazy_cache`
+For raw ``get()`` and ``set()``, use :data:`~cache_results.lazy.lazy_cache`
 in place of ``django.core.cache.cache``:
 
 .. code-block:: python
@@ -26,9 +26,9 @@ stored in the cache are lost, and cached results are recomputed by every
 server.
 
 ``lazy_cache`` imports Django's cache only on first use. Before Django's apps
-are ready, :attr:`~cache_results.lazy_cache.LazyCache.cache` is ``None`` and a
+are ready, :attr:`~cache_results.lazy.LazyCache.cache` is ``None`` and a
 warning is logged. Code that may run during startup checks
-:attr:`~cache_results.lazy_cache.LazyCache.ready` first, as ``@cache_results``
+:attr:`~cache_results.lazy.LazyCache.ready` first, as ``@cache_results``
 does.
 
 Checks on first use
@@ -38,4 +38,4 @@ On first use, ``lazy_cache`` writes and reads a test key, and logs an error if
 the cache can't be read or written. It warns when the ``default`` cache is a
 local-memory or dummy backend, which keep nothing across processes and are
 usually a misconfiguration in production. Its messages go to the
-``cache_results.lazy_cache`` logger, formatted by ``LOG_PREFIX``.
+``cache_results.lazy`` logger, formatted by ``LOG_PREFIX``.

@@ -21,6 +21,16 @@ class TestPackage(SimpleTestCase):
         )
         self.assertIsInstance(cache_results.lazy_cache, cache_results.LazyCache)
 
+    def test_modules_are_not_shadowed(self):
+        """Each module imports as a module: no name exported by the package hides one, as lazy_cache once did."""
+        import importlib  # pylint: disable=import-outside-toplevel
+        import types  # pylint: disable=import-outside-toplevel
+
+        for name in ("colors", "conf", "decorators", "keys", "lazy", "sentinels"):
+            module = importlib.import_module(f"cache_results.{name}")
+            self.assertIsInstance(getattr(cache_results, name), types.ModuleType, name)
+            self.assertIs(getattr(cache_results, name), module)
+
     def test_version(self):
         """The version is a semantic version, as semantic-release writes it."""
         self.assertRegex(cache_results.__version__, re.compile(r"^\d+\.\d+\.\d+"))

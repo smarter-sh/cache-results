@@ -19,7 +19,7 @@ PyPI and configures it with its own hooks in `smarter/smarter/lib/cache/hooks.py
 | `src/cache_results/keys.py`        | `CacheKeyEncoder`, `normalize()`, `make_key()`: what a key is        |
 | `src/cache_results/conf.py`        | `CacheResultsSettings`: the `CACHE_RESULTS` setting, with defaults   |
 | `src/cache_results/sentinels.py`   | `CACHE_MISS_SENTINEL`, `CACHE_NONE_SENTINEL`                         |
-| `src/cache_results/lazy_cache.py`  | `lazy_cache`: Django's cache, imported once Django is ready          |
+| `src/cache_results/lazy.py`        | `lazy_cache`: Django's cache, imported once Django is ready          |
 | `src/cache_results/colors.py`      | `log_prefix()`: a `LOG_PREFIX` hook that colors messages by event    |
 | `src/cache_results/__version__.py` | The version. **Written by semantic-release**, never by hand          |
 | `tests/`                           | pytest-django tests, one module per source module                    |

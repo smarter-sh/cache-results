@@ -28,7 +28,7 @@ from .conf import cache_results_settings
 logger = logging.getLogger(__name__)
 LOGGER_PREFIX = f"{__name__}.LazyCache"
 
-_DIAGNOSTIC_KEY = "cache_results.lazy_cache.diagnostic"
+_DIAGNOSTIC_KEY = "cache_results.lazy.diagnostic"
 
 _DEFAULT_TIMEOUT = object()
 """The default of every ``timeout``: the cache's own timeout.

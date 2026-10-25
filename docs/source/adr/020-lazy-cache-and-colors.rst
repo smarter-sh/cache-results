@@ -17,7 +17,7 @@ django-waffle.
 
 Decision
 --------
-The package provides :data:`~cache_results.lazy_cache.lazy_cache` and
+The package provides :data:`~cache_results.lazy.lazy_cache` and
 :func:`cache_results.colors.log_prefix`, which depend only on Django.
 Hooks that need another library stay in the project that uses that library,
 and are named by the project's ``CACHE_RESULTS`` setting, as Smarter's

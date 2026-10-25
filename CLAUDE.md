@@ -49,7 +49,7 @@ work. This file holds only what applies to nearly every task.
 | `src/cache_results/keys.py`       | Cache keys: `CacheKeyEncoder`, `normalize()`, `make_key()`  |
 | `src/cache_results/conf.py`       | The `CACHE_RESULTS` setting and its defaults                |
 | `src/cache_results/sentinels.py`  | The markers for a cache miss and a cached `None`            |
-| `src/cache_results/lazy_cache.py` | `lazy_cache`: Django's cache, imported once Django is ready |
+| `src/cache_results/lazy.py`       | `lazy_cache`: Django's cache, imported once Django is ready |
 | `src/cache_results/colors.py`     | `log_prefix()`: a `LOG_PREFIX` hook, colored by event       |
 | `tests/`                          | pytest-django tests, one module per source module           |
 | `tests/settings.py`               | Test settings: local-memory cache, or Redis from an env var |
