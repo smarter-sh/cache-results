@@ -64,17 +64,36 @@ make release             # the real thing
 gh run watch
 ```
 
-1. `release`: semantic-release, as above. A dry run stops here, and the run's
+1. `ci`: the whole CI workflow (`ci.yml` is also a reusable workflow). Nothing
+   is released unless it passes.
+2. `release`: semantic-release, as above. A dry run stops here, and the run's
    summary shows the last and next versions.
-2. `build`: checks out the new tag, builds, `twine check --strict`, and fails
-   if `__version__.py` doesn't match the release.
-3. `publish`: uploads to PyPI with **trusted publishing** (OIDC, no token). It
-   runs only when the repository variable `PUBLISH_TO_PYPI` is `"true"`, in the
-   `pypi` environment, which must be registered as a trusted publisher of the
-   `cache-results` project on PyPI.
+3. `dist`: checks out the new tag, builds, `twine check --strict`, and fails
+   unless `__version__.py` is the release, and `dist/` holds exactly one wheel
+   and one sdist of it, named with the PEP 440 spelling (`0.2.0-alpha.1` is
+   `0.2.0a1`).
+4. `attach`: uploads the distributions to the GitHub release.
+5. `publish-testpypi`, then `verify-testpypi`: a rehearsal on TestPyPI, when
+   the variable `PUBLISH_TO_TESTPYPI` is `"true"`. The verify job installs the
+   upload back, its dependencies from PyPI and only cache-results from TestPyPI
+   (anyone can upload a look-alike of a dependency there), and checks the
+   installed `__version__`.
+6. `publish-pypi`, then `verify-pypi`: PyPI, **from `main` only**, when
+   `PUBLISH_TO_PYPI` is `"true"`, and only if the rehearsal passed or is off.
+   Prereleases from `alpha` and `beta` stop at TestPyPI.
 
-Pushing the release commit to a protected `main` needs the repository secret
-`PAT`. Without it, the workflow uses `GITHUB_TOKEN`.
+- Releasing and publishing are **one workflow**. smarter-python publishes by
+  hand (`make publish-test`, `make publish-prod`), and its GitHub releases
+  ran five versions ahead of PyPI. Don't split them again.
+- Uploads use **trusted publishing** (OIDC): there is no PyPI token anywhere.
+  Each index needs `release.yml` registered as a trusted publisher of the
+  `cache-results` project, for the `testpypi` and `pypi` environments.
+- Uploads `skip-existing`, so a run that failed after an upload can be run
+  again, as smarter-python's `twine upload --skip-existing` allows.
+
+Secrets: `CODECOV_TOKEN` (coverage), and `PAT` only when `main` is protected
+against `GITHUB_TOKEN`'s pushes. Variables: `PUBLISH_TO_TESTPYPI` and
+`PUBLISH_TO_PYPI`, `"false"` until the trusted publishers are registered.
 
 ## Dependencies and requirements
 

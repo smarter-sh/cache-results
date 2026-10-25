@@ -159,18 +159,22 @@ terraform-apply:
 # ---------------------------------------------------------
 # Release
 # ---------------------------------------------------------
+# main makes a release, published to TestPyPI then PyPI. RELEASE_BRANCH=alpha or beta makes a
+# prerelease, published to TestPyPI only. See .github/workflows/release.yml.
+RELEASE_BRANCH ?= main
+
 release-dry-run:
 	@echo "==============================================================================="
-	@echo "Starting the Release workflow on GitHub as a dry run ..."
+	@echo "Starting the Release workflow on $(RELEASE_BRANCH) as a dry run: CI, then the next version ..."
 	@echo "==============================================================================="
-	gh workflow run release.yml --ref main -f dry_run=true
+	gh workflow run release.yml --ref $(RELEASE_BRANCH) -f dry_run=true
 	@echo "Follow it with: gh run watch"
 
 release:
 	@echo "==============================================================================="
-	@echo "Starting the Release workflow on GitHub: tag, changelog and GitHub release ..."
+	@echo "Starting the Release workflow on $(RELEASE_BRANCH): CI, release, TestPyPI and PyPI ..."
 	@echo "==============================================================================="
-	gh workflow run release.yml --ref main -f dry_run=false
+	gh workflow run release.yml --ref $(RELEASE_BRANCH) -f dry_run=false
 	@echo "Follow it with: gh run watch"
 
 help:
@@ -197,6 +201,6 @@ help:
 	@echo 'terraform-plan         - Plan changes to the docs site AWS resources, into terraform/docs/tfplan'
 	@echo 'terraform-apply        - Apply terraform/docs/tfplan'
 	@echo '<************************** Release **************************>'
-	@echo 'release-dry-run        - Run the Release workflow as a dry run, to see the next version'
-	@echo 'release                - Run the Release workflow: version, changelog, tag, GitHub release'
+	@echo 'release-dry-run        - Run the Release workflow as a dry run: CI, then the next version'
+	@echo 'release                - Release and publish: CI, tag, GitHub release, TestPyPI, PyPI (RELEASE_BRANCH)'
 	@echo '===================================================================='

@@ -20,13 +20,19 @@ on:
   push:
     branches: [main, alpha, beta]
   pull_request:
+  # release.yml runs the whole of CI before it releases anything.
+  workflow_call:
+    secrets:
+      CODECOV_TOKEN:
+        required: false
 
 permissions:
   contents: read
 
-# a newer push to the same branch or pull request makes an older run obsolete.
+# a newer push to the same branch or pull request makes an older run obsolete. In a run
+# called by release.yml, github.workflow is "Release", so a push can't cancel a release's CI.
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:

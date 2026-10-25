@@ -1,20 +1,25 @@
 ---
 #------------------------------------------------------------------------------
-# Release: run by hand from the Actions tab, on main (or alpha or beta, for a
-# prerelease).
+# Release: run by hand from the Actions tab, or with make release-dry-run and
+# make release, on main (a release) or alpha or beta (a prerelease).
 #
-# - release: semantic-release reads the conventional commits since the last
-#   tag, and, if they call for a release, writes the version into
-#   src/cache_results/__version__.py, updates CHANGELOG.md, commits both, tags
-#   the commit and publishes a GitHub release. See release.config.js. It runs
-#   as a dry run unless dry_run is unchecked.
-# - build: builds the sdist and wheel from the new tag.
-# - publish: uploads them to PyPI with trusted publishing. It is skipped until
-#   the repository variable PUBLISH_TO_PYPI is "true", and needs a "pypi"
-#   environment, and this workflow registered as a trusted publisher on PyPI.
+#   ci                 the whole CI workflow (lint, tests, docs, terraform, build)
+#   release            semantic-release: version, CHANGELOG.md, tag, GitHub release
+#   dist               the sdist and wheel, built from the new tag, and checked
+#   attach             the distributions, attached to the GitHub release
+#   publish-testpypi   TestPyPI, as a rehearsal       (vars.PUBLISH_TO_TESTPYPI)
+#   verify-testpypi    install it back from TestPyPI, and check the version
+#   publish-pypi       PyPI, main only, after the rehearsal passed (vars.PUBLISH_TO_PYPI)
+#   verify-pypi        install it back from PyPI, and check the version
 #
-# Pushing to a protected branch needs the repository secret PAT, a token
-# allowed to push to it. Without it, GITHUB_TOKEN is used.
+# Releasing and publishing are one workflow, so that a version can't be tagged
+# on GitHub and never reach PyPI. Uploads use trusted publishing (OIDC): there
+# is no PyPI token. Each index needs this workflow registered as a trusted
+# publisher, for the "testpypi" and "pypi" environments. Uploads skip files
+# that already exist, so a failed run can be run again.
+#
+# Secrets: CODECOV_TOKEN (CI's coverage upload), and PAT, only if main is
+# protected against GITHUB_TOKEN's pushes (semantic-release commits to it).
 #------------------------------------------------------------------------------
 name: Release
 
@@ -22,17 +27,27 @@ on:
   workflow_dispatch:
     inputs:
       dry_run:
-        description: "Dry run: report the next version without releasing"
+        description: "Dry run: run CI and report the next version, without releasing"
         type: boolean
         default: true
+
+permissions:
+  contents: read
 
 concurrency:
   group: release
   cancel-in-progress: false
 
 jobs:
+  ci:
+    name: CI
+    uses: ./.github/workflows/ci.yml
+    secrets:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
   release:
     name: Semantic release
+    needs: ci
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -65,18 +80,21 @@ jobs:
       - name: Summary
         run: |
           {
-            echo "Dry run: ${{ inputs.dry_run }}"
-            echo "Last release: ${{ steps.semantic.outputs.last_release_version || 'none' }}"
-            echo "Next release: ${{ steps.semantic.outputs.new_release_version || 'none' }}"
+            echo "### Release"
+            echo "- Branch: ${{ github.ref_name }}"
+            echo "- Dry run: ${{ inputs.dry_run }}"
+            echo "- Last release: ${{ steps.semantic.outputs.last_release_version || 'none' }}"
+            echo "- Next release: ${{ steps.semantic.outputs.new_release_version || 'none' }}"
           } >> "$GITHUB_STEP_SUMMARY"
 
-  build:
-    name: Build
+  dist:
+    name: Build distributions
     needs: release
     if: needs.release.outputs.published == 'true' && !inputs.dry_run
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
+    outputs:
+      # the version as Python's packaging writes it, e.g. 0.2.0-alpha.1 becomes 0.2.0a1.
+      python-version: ${{ steps.versions.outputs.python-version }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -86,26 +104,54 @@ jobs:
           python-version: "3.14"
       - name: Build and check the distributions
         run: |
-          pip install build twine
+          pip install build twine packaging
           python -m build
           twine check --strict dist/*
-          # the tag's __version__.py, written by semantic-release, must be the released version.
-          grep -qx '__version__ = "${{ needs.release.outputs.version }}"' src/cache_results/__version__.py \
-            || { echo "src/cache_results/__version__.py doesn't match the release"; exit 1; }
+      - name: Check the versions
+        id: versions
+        env:
+          RELEASE: ${{ needs.release.outputs.version }}
+        run: |
+          # semantic-release wrote the release's version into the tagged __version__.py.
+          grep -qx "__version__ = \"$RELEASE\"" src/cache_results/__version__.py \
+            || { echo "::error::src/cache_results/__version__.py is not $RELEASE"; exit 1; }
+          PY_VERSION=$(python -c "import sys; from packaging.version import Version; print(Version(sys.argv[1]))" "$RELEASE")
+          # one wheel and one sdist, both of exactly that version.
+          ls "dist/cache_results-$PY_VERSION-py3-none-any.whl" "dist/cache_results-$PY_VERSION.tar.gz" \
+            || { echo "::error::dist/ doesn't hold version $PY_VERSION"; ls dist; exit 1; }
+          [ "$(find dist -type f | wc -l)" -eq 2 ] || { echo "::error::dist/ holds other files"; ls dist; exit 1; }
+          echo "python-version=$PY_VERSION" >> "$GITHUB_OUTPUT"
       - uses: actions/upload-artifact@v7
         with:
           name: dist
           path: dist/
           if-no-files-found: error
 
-  publish:
-    name: Publish to PyPI
-    needs: build
-    if: vars.PUBLISH_TO_PYPI == 'true'
+  attach:
+    name: Attach to the GitHub release
+    needs: [release, dist]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: dist/
+      - name: Upload the distributions to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.release.outputs.tag }}
+        run: gh release upload "$TAG" dist/* --clobber --repo "${{ github.repository }}"
+
+  publish-testpypi:
+    name: Publish to TestPyPI
+    needs: [release, dist]
+    if: vars.PUBLISH_TO_TESTPYPI == 'true'
     runs-on: ubuntu-latest
     environment:
-      name: pypi
-      url: https://pypi.org/project/cache-results/
+      name: testpypi
+      url: https://test.pypi.org/project/cache-results/${{ needs.dist.outputs.python-version }}/
     permissions:
       id-token: write
     steps:
@@ -114,3 +160,78 @@ jobs:
           name: dist
           path: dist/
       - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+          skip-existing: true
+
+  verify-testpypi:
+    name: Verify the TestPyPI upload
+    needs: [dist, publish-testpypi]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+      - name: Install from TestPyPI, and import it
+        env:
+          VERSION: ${{ needs.dist.outputs.python-version }}
+        run: |
+          # dependencies from PyPI, and only cache-results itself from TestPyPI, where anyone
+          # can upload a package named like one of them.
+          pip install "Django>=4.2" "asgiref>=3.6" packaging
+          # the index can take a minute to show a new upload.
+          for attempt in 1 2 3 4 5 6 7 8 9 10; do
+            pip install --no-cache-dir --no-deps --index-url https://test.pypi.org/simple/ "cache-results==$VERSION" && break
+            [ "$attempt" = 10 ] && exit 1
+            sleep 30
+          done
+          # the installed package's own __version__ must be the release, compared as PEP 440 versions.
+          python -I -c "import sys, cache_results; from packaging.version import Version; installed = Version(cache_results.__version__); assert installed == Version(sys.argv[1]), installed; print('cache-results', installed)" "$VERSION"
+
+  publish-pypi:
+    name: Publish to PyPI
+    needs: [release, dist, publish-testpypi, verify-testpypi]
+    # main only; and the TestPyPI rehearsal, when it is enabled, must have passed.
+    if: >-
+      !cancelled()
+      && needs.dist.result == 'success'
+      && contains(fromJSON('["success", "skipped"]'), needs.publish-testpypi.result)
+      && contains(fromJSON('["success", "skipped"]'), needs.verify-testpypi.result)
+      && github.ref_name == 'main'
+      && vars.PUBLISH_TO_PYPI == 'true'
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/project/cache-results/${{ needs.dist.outputs.python-version }}/
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          skip-existing: true
+
+  verify-pypi:
+    name: Verify the PyPI upload
+    needs: [dist, publish-pypi]
+    if: ${{ !cancelled() && needs.publish-pypi.result == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+      - name: Install from PyPI, and import it
+        env:
+          VERSION: ${{ needs.dist.outputs.python-version }}
+        run: |
+          for attempt in 1 2 3 4 5 6 7 8 9 10; do
+            pip install --no-cache-dir "cache-results==$VERSION" && break
+            [ "$attempt" = 10 ] && exit 1
+            sleep 30
+          done
+          pip install packaging
+          # the installed package's own __version__ must be the release, compared as PEP 440 versions.
+          python -I -c "import sys, cache_results; from packaging.version import Version; installed = Version(cache_results.__version__); assert installed == Version(sys.argv[1]), installed; print('cache-results', installed)" "$VERSION"
