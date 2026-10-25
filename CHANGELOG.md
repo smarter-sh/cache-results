@@ -1,3 +1,10 @@
+## [0.1.1-alpha.1](https://github.com/smarter-sh/cache-results/compare/v0.1.0...v0.1.1-alpha.1) (2026-10-25)
+
+
+### Bug Fixes
+
+* **release:** attribute the package and docs to the smarter project ([c9f93c1](https://github.com/smarter-sh/cache-results/commit/c9f93c1b958509d4fe0b839ac5efbac20a3d7021))
+
 # [0.1.0](https://github.com/smarter-sh/cache-results/compare/v0.0.0...v0.1.0) (2026-10-25)
 
 
