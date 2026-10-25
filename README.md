@@ -1,7 +1,7 @@
 # cache-results
 
 [![A project of The Smarter Project](https://img.shields.io/badge/a%20project%20of-The%20Smarter%20Project-2F6FEB)](https://smarter.sh)
-[![CI](https://github.com/smarter-sh/cache-results/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/smarter-sh/cache-results/actions/workflows/ci.yml)
+[![Release](https://github.com/smarter-sh/cache-results/actions/workflows/release.yml/badge.svg?branch=main)](https://github.com/smarter-sh/cache-results/actions/workflows/release.yml)
 [![codecov](https://codecov.io/gh/smarter-sh/cache-results/graph/badge.svg)](https://codecov.io/gh/smarter-sh/cache-results)
 [![Latest Release](https://img.shields.io/github/v/release/smarter-sh/cache-results?label=release)](https://github.com/smarter-sh/cache-results/releases)
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue?logo=python&logoColor=white)](https://www.python.org/)
@@ -184,10 +184,12 @@ make python-requirements  # recompile the pinned requirements/*.txt
 `CACHE_RESULTS_TEST_REDIS_URL` instead.
 
 CI runs the hooks, the tests on every supported pair of Python and Django
-versions and against Redis, and a build, on every push and pull request.
+versions and against Redis, and a build, on every pull request, and on every
+push to `main`, `alpha` and `beta` as the first step of the Release workflow.
 Coverage is reported to [Codecov](https://codecov.io/gh/smarter-sh/cache-results).
-Releases are made by the Release workflow with semantic-release, from the
-conventional commit messages (`make release-dry-run` shows the next version).
+When CI passes, the Release workflow releases with semantic-release, from the
+conventional commit messages, and publishes to PyPI from `main` (or to TestPyPI
+from `alpha` and `beta`). `make release-dry-run` shows the next version.
 
 ## Contributing
 

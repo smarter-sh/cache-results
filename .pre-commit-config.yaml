@@ -23,6 +23,9 @@ repos:
       - id: prettier
         args: [--no-error-on-unmatched-pattern]
         types_or: [markdown, yaml, json]
+        # semantic-release writes the changelog in its own style on every
+        # release, so reformatting it would only be undone by the next one.
+        exclude: ^CHANGELOG\.md$
   - repo: https://github.com/psf/black
     rev: 26.10.1
     hooks:

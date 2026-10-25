@@ -3,7 +3,7 @@ ADR-011: CI/CD
 
 Status
 ------
-Accepted
+Accepted. Superseded in part by :doc:`ADR-019 <019-release-on-push>`: releases start on every push.
 
 Context
 -------

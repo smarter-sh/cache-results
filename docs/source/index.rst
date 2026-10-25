@@ -5,9 +5,9 @@ cache-results
    :target: https://smarter.sh
    :alt: A project of The Smarter Project
 
-.. image:: https://github.com/smarter-sh/cache-results/actions/workflows/ci.yml/badge.svg?branch=main
-   :target: https://github.com/smarter-sh/cache-results/actions/workflows/ci.yml
-   :alt: CI
+.. image:: https://github.com/smarter-sh/cache-results/actions/workflows/release.yml/badge.svg?branch=main
+   :target: https://github.com/smarter-sh/cache-results/actions/workflows/release.yml
+   :alt: Release
 
 .. image:: https://codecov.io/gh/smarter-sh/cache-results/graph/badge.svg
    :target: https://codecov.io/gh/smarter-sh/cache-results
