@@ -1,5 +1,6 @@
 # cache-results
 
+[![A project of The Smarter Project](https://img.shields.io/badge/a%20project%20of-The%20Smarter%20Project-2F6FEB)](https://smarter.sh)
 [![CI](https://github.com/smarter-sh/cache-results/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/smarter-sh/cache-results/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/smarter-sh/cache-results/graph/badge.svg)](https://codecov.io/gh/smarter-sh/cache-results)
 [![Latest Release](https://img.shields.io/github/v/release/smarter-sh/cache-results?label=release)](https://github.com/smarter-sh/cache-results/releases)

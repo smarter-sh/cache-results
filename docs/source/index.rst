@@ -1,6 +1,10 @@
 cache-results
 =============
 
+.. image:: https://img.shields.io/badge/a%20project%20of-The%20Smarter%20Project-2F6FEB
+   :target: https://smarter.sh
+   :alt: A project of The Smarter Project
+
 .. image:: https://github.com/smarter-sh/cache-results/actions/workflows/ci.yml/badge.svg?branch=main
    :target: https://github.com/smarter-sh/cache-results/actions/workflows/ci.yml
    :alt: CI
@@ -27,6 +31,12 @@ cache-results
 
 **cache-results** is a Django decorator that caches a function's results by its
 arguments, in any Django cache, such as Redis.
+
+It is part of `The Smarter Project <https://smarter.sh>`__. It began as the
+caching layer of `Smarter <https://github.com/smarter-sh/smarter>`__, an
+open-source platform for building and running AI applications with Django,
+where it caches database reads and third-party api calls across many
+application servers.
 
 .. code-block:: python
 

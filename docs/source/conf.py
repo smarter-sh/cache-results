@@ -46,11 +46,13 @@ extensions = [
     "sphinx_sitemap",
 ]
 
-templates_path: list[str] = []
+# _templates/footer.html adds The Smarter Project to every page's footer.
+templates_path = ["_templates"]
 exclude_patterns: list[str] = []
 language = "en"
 
-# docstrings carry their own :type: and :rtype: fields (ADR-014), so signatures keep the annotations.
+# docstrings carry their own :type: and :rtype: fields (ADR-014),
+# so signatures keep the annotations.
 autodoc_typehints = "signature"
 autodoc_member_order = "bysource"
 autodoc_default_options = {"members": True, "show-inheritance": True}
