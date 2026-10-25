@@ -17,6 +17,7 @@ defaults below.
         "LOGGING_ENABLED": None,
         "VERBOSE_LOGGING": None,
         "LOG_PREFIX": None,
+        "LOG_COLORS": None,
     }
 
 The setting is read on every call, so
@@ -60,7 +61,12 @@ Entries
 ``LOG_PREFIX``
     A callable ``(text, event)`` that formats the start of each log message,
     where ``event`` is ``"hit"``, ``"miss"``, ``"invalidate"`` or ``""``.
-    Default: the text unchanged.
+    Default: the text unchanged. :func:`cache_results.colors.log_prefix`
+    colors it by event. See :doc:`logging`.
+
+``LOG_COLORS``
+    A dict from event to ANSI code, for :func:`cache_results.colors.log_prefix`.
+    Default: green hits, red misses, gray invalidations, bold red otherwise.
 
 Callables and classes are given as dotted paths (``"myapp.cache.logging_on"``),
 imported once, or as the objects themselves.

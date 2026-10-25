@@ -62,12 +62,23 @@ call.
 Formatting the prefix
 ---------------------
 
-``LOG_PREFIX`` formats the start of each message, e.g. to color hits and
-misses in a development console:
+``LOG_PREFIX`` formats the start of each message. The package's own
+:func:`cache_results.colors.log_prefix` colors it by event, for a development
+console: hits green, misses red, invalidations gray, and other messages, such
+as errors, bold red.
 
 .. code-block:: python
 
-    def log_prefix(text: str, event: str) -> str:
-        colors = {"hit": "\033[32m", "miss": "\033[31m", "invalidate": "\033[37m"}
-        color = colors.get(event)
-        return f"{color}{text}\033[0m" if color else text
+    CACHE_RESULTS = {"LOG_PREFIX": "cache_results.colors.log_prefix"}
+
+``LOG_COLORS`` changes a color, as an ANSI code, or turns one off with
+``None``:
+
+.. code-block:: python
+
+    CACHE_RESULTS = {
+        "LOG_PREFIX": "cache_results.colors.log_prefix",
+        "LOG_COLORS": {"hit": "\033[94m", "": None},
+    }
+
+Any other callable ``(text, event)`` works too.

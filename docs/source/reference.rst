@@ -10,3 +10,5 @@ The reference is generated from the package's docstrings.
    reference/keys
    reference/conf
    reference/sentinels
+   reference/lazy_cache
+   reference/colors

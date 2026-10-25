@@ -67,6 +67,8 @@ Features
   the first one to compute it.
 - **Safe during startup**: a function called before Django's apps are ready
   runs uncached.
+- **lazy_cache**: Django's cache, imported only once Django is ready, for
+  raw ``get()`` and ``set()``.
 - **One setting**, ``CACHE_RESULTS``, configures the cache, the timeout, keys
   and logging.
 - **Small**: depends only on Django and asgiref. MIT licensed.
@@ -88,6 +90,7 @@ Features
    guide/classmethods
    guide/settings
    guide/logging
+   guide/lazy-cache
    guide/testing
 
 .. toctree::

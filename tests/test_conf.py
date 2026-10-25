@@ -67,3 +67,14 @@ class TestCacheResultsSettings(SimpleTestCase):
         """An encoder that isn't a CacheKeyEncoder, which would not refuse unsafe arguments, is refused."""
         with self.assertRaises(TypeError):
             _ = cache_results_settings.key_encoder
+
+
+class TestOption(SimpleTestCase):
+    """Test option(), which hooks use for their own entries of the setting."""
+
+    @override_settings(CACHE_RESULTS={"LOGGING_SWITCH": "my_switch"})
+    def test_option(self):
+        """An entry is returned as set, and a missing one as the default."""
+        self.assertEqual(cache_results_settings.option("LOGGING_SWITCH"), "my_switch")
+        self.assertIsNone(cache_results_settings.option("LOG_COLORS"))
+        self.assertEqual(cache_results_settings.option("LOG_COLORS", {}), {})

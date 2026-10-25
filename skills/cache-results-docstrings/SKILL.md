@@ -7,7 +7,7 @@ description: Use when writing or editing Python docstrings in cache-results. Doc
 
 Docstrings explain the code to contributors, and become the package's api
 reference through Sphinx autodoc (`cache-results-sphinx-docs`). The style is
-Smarter's, so that Smarter's copy and this package read the same.
+Smarter's, so that Smarter and this package read the same.
 
 ## Style: reStructuredText field lists
 

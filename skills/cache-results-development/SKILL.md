@@ -1,6 +1,6 @@
 ---
 name: cache-results-development
-description: Start here for any change to the cache-results repository, the @cache_results Django decorator published to PyPI as cache-results. Gives the non-negotiable rules, the package's architecture (decorators, keys, conf, sentinels), the compatibility promises that protect cached entries, the Django and async traps, the logging style, the relationship with Smarter's copy, and an index of the narrower skills to load for each kind of work.
+description: Start here for any change to the cache-results repository, the @cache_results Django decorator published to PyPI as cache-results. Gives the non-negotiable rules, the package's architecture (decorators, keys, conf, sentinels), the compatibility promises that protect cached entries, the Django and async traps, the logging style, how Smarter uses the package, and an index of the narrower skills to load for each kind of work.
 ---
 
 # cache-results Development
@@ -8,8 +8,8 @@ description: Start here for any change to the cache-results repository, the @cac
 `cache-results` (import name `cache_results`) is a Django decorator that caches
 a function's results by its arguments, in any Django cache. It grew out of the
 caching layer of [Smarter](https://github.com/smarter-sh/smarter), usually
-checked out beside this repository as `../smarter`, which keeps its own copy in
-`smarter/smarter/lib/cache/` until it installs this package from PyPI.
+checked out beside this repository as `../smarter`, which installs it from
+PyPI and configures it with its own hooks in `smarter/smarter/lib/cache/hooks.py`.
 
 ## Repository map
 
@@ -19,6 +19,8 @@ checked out beside this repository as `../smarter`, which keeps its own copy in
 | `src/cache_results/keys.py`        | `CacheKeyEncoder`, `normalize()`, `make_key()`: what a key is        |
 | `src/cache_results/conf.py`        | `CacheResultsSettings`: the `CACHE_RESULTS` setting, with defaults   |
 | `src/cache_results/sentinels.py`   | `CACHE_MISS_SENTINEL`, `CACHE_NONE_SENTINEL`                         |
+| `src/cache_results/lazy_cache.py`  | `lazy_cache`: Django's cache, imported once Django is ready          |
+| `src/cache_results/colors.py`      | `log_prefix()`: a `LOG_PREFIX` hook that colors messages by event    |
 | `src/cache_results/__version__.py` | The version. **Written by semantic-release**, never by hand          |
 | `tests/`                           | pytest-django tests, one module per source module                    |
 | `docs/source/`                     | Sphinx docs: the api reference and the ADRs (`docs/source/adr/`)     |
@@ -125,25 +127,28 @@ logger.error("%s %s() runs uncached: %s", _prefix(), func.__qualname__, reason)
   path can't flood the log.
 - Name types, never values. `describe_key_error()` never includes an argument.
 
-## Smarter's copy
+## How Smarter uses the package
 
-Until Smarter installs this package, `../smarter/smarter/smarter/lib/cache/`
-holds a copy of `decorators.py`, `keys.py`, `conf.py` and
-`cache_sentinel.py` (this repository's `sentinels.py`). **Make every change in
-both**, with its tests, and follow `../smarter/skills/` there. Smarter's
-`hooks.py` and `lazy_cache.py` are Smarter's own and have no counterpart here.
+Smarter (`../smarter`) pins `cache-results` in `smarter/requirements/` and
+imports `cache_results` and `lazy_cache` from it. Its `CACHE_RESULTS` setting
+names this package's `colors.log_prefix` and Smarter's own hooks in
+`smarter/smarter/lib/cache/hooks.py`: a waffle-switched `LOGGING_ENABLED` and
+a Pydantic-aware `KEY_ENCODER`. Those stay in Smarter because they need
+django-waffle and Pydantic. **Never add them here**: a hook that needs another
+library belongs to the project that uses that library. A release reaches
+Smarter when its pin is bumped (`cache-results-release`).
 
 ## Which skill to load
 
-| Task                                                          | Skill                        |
-| ------------------------------------------------------------- | ---------------------------- |
-| Tests, the version matrix, Redis, coverage                    | `cache-results-testing`      |
-| Docstrings                                                    | `cache-results-docstrings`   |
-| Type annotations, `Any`, mypy                                 | `cache-results-typing`       |
-| Lint, format, pre-commit                                      | `cache-results-code-quality` |
-| Writing a commit message                                      | `cache-results-git-commits`  |
-| CI, Codecov, semantic-release, versions, PyPI, Smarter's copy | `cache-results-release`      |
-| Documentation pages                                           | `cache-results-sphinx-docs`  |
+| Task                                                         | Skill                        |
+| ------------------------------------------------------------ | ---------------------------- |
+| Tests, the version matrix, Redis, coverage                   | `cache-results-testing`      |
+| Docstrings                                                   | `cache-results-docstrings`   |
+| Type annotations, `Any`, mypy                                | `cache-results-typing`       |
+| Lint, format, pre-commit                                     | `cache-results-code-quality` |
+| Writing a commit message                                     | `cache-results-git-commits`  |
+| CI, Codecov, semantic-release, versions, PyPI, Smarter's pin | `cache-results-release`      |
+| Documentation pages                                          | `cache-results-sphinx-docs`  |
 
 ## Definition of done
 
@@ -152,5 +157,5 @@ both**, with its tests, and follow `../smarter/skills/` there. Smarter's
 - `make typecheck` and the pre-commit hooks pass.
 - Public objects have reST docstrings, and the README describes any change a
   user can see.
-- Smarter's copy has the same change, or your summary says why not.
+- Your summary says whether Smarter needs its pin bumped, or other changes, to use it.
 - Your summary says what changed, what you verified, and what you skipped.

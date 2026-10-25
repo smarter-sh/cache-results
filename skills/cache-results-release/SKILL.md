@@ -1,6 +1,6 @@
 ---
 name: cache-results-release
-description: Use when working on cache-results' CI/CD, dependencies or releases - the requirements files (requirements/in/constraints.in, base.in, local.in, compiled by make python-requirements), the CI workflow (lint, test matrix, Redis, build), Codecov, semantic-release (release.config.js, versions, the changelog, tags, prereleases from alpha and beta), the Release workflow and PyPI trusted publishing, supported Python and Django versions, and keeping Smarter's copy of the code in step - or when asked why CI failed, what the next version will be, or how to cut a release.
+description: Use when working on cache-results' CI/CD, dependencies or releases - the requirements files (requirements/in/constraints.in, base.in, local.in, compiled by make python-requirements), the CI workflow (lint, test matrix, Redis, build), Codecov, semantic-release (release.config.js, versions, the changelog, tags, prereleases from alpha and beta), the Release workflow and PyPI trusted publishing, supported Python and Django versions, and bumping Smarter's pin - or when asked why CI failed, what the next version will be, or how to cut a release.
 ---
 
 # cache-results CI/CD and Releases
@@ -140,12 +140,15 @@ release arrives or reaches end of life, change together: the matrix, the
 `pyproject.toml` classifiers (and `requires-python`), the README's badges and
 installation text, and `CLAUDE.md`. Dropping a version is a breaking change.
 
-## Smarter's copy
+## Smarter's pin
 
-Smarter (`../smarter`) keeps a copy of the core in
-`smarter/smarter/lib/cache/` until it installs this package from PyPI. Until
-then, a change here is made there too, in a commit of Smarter's own
-(`../smarter/skills/smarter-git-commits`, scope `cache`), and tested in its
-containers (`../smarter/skills/smarter-docker-environment`). Once Smarter
-depends on the package, a release here reaches Smarter only when its
-requirements are updated.
+Smarter (`../smarter`) installs this package from PyPI, pinned as
+`cache-results==<version>` in `smarter/requirements/in/base.in`'s compiled
+files (`base.txt`, `docker.txt`, `docs.txt`, `local.txt`). A release reaches
+Smarter only when that pin is bumped, in a commit of Smarter's own
+(`../smarter/skills/smarter-git-commits`, scope `cache`). Smarter's Docker
+image runs `manage.py` while it builds, so a Smarter change that needs a new
+api here can't be built until that version is on PyPI. To test it before
+then, build a wheel (`python -m build --wheel`) and `pip install --no-deps`
+it into the running `smarter-app` container
+(`../smarter/skills/smarter-docker-environment`).
