@@ -1,14 +1,9 @@
-# [0.2.0-alpha.1](https://github.com/smarter-sh/cache-results/compare/v0.1.1-alpha.1...v0.2.0-alpha.1) (2026-10-25)
+## [0.1.1](https://github.com/smarter-sh/cache-results/compare/v0.1.0...v0.1.1) (2026-10-25)
 
 
 ### Bug Fixes
 
-* rename the lazy_cache module so the instance doesn't hide it ([c77346c](https://github.com/smarter-sh/cache-results/commit/c77346c72439ed6fd86c34f1ce350fb14f5490d1))
-
-
-### Features
-
-* add lazy_cache and a colored log prefix hook ([ea14e39](https://github.com/smarter-sh/cache-results/commit/ea14e39b4d542b341cffadcf5c80d1074bc463b8))
+* **release:** attribute the package and docs to the smarter project ([c9f93c1](https://github.com/smarter-sh/cache-results/commit/c9f93c1b958509d4fe0b839ac5efbac20a3d7021))
 
 ## [0.1.1-alpha.1](https://github.com/smarter-sh/cache-results/compare/v0.1.0...v0.1.1-alpha.1) (2026-10-25)
 
