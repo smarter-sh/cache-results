@@ -19,7 +19,10 @@ make coverage                      # with a coverage report; fails below 95%
 venv/bin/python -m pytest tests/test_keys.py -k sets   # one module or test
 ```
 
-- Run the tests yourself, after every change, and report the counts.
+- Run the tests yourself, after every change, and report the counts. Never
+  ask the user to re-run them.
+- Read the pass and fail counts, not only the coverage table: a coverage
+  report alone is not a result.
 - **`make test-redis` clears its database.** Use a database nothing else uses,
   and check that it's empty first (`redis-cli -n 15 dbsize`). Never point it
   at a database that holds another application's data, e.g. Smarter's dev
@@ -54,7 +57,8 @@ the words. Use a shell function with two arguments.
   `decorators._key_errors_logged`. Keep both.
 - Change settings with `override_settings(CACHE_RESULTS={...})`, never by
   assigning to `settings`.
-- Each test has a one-line docstring stating the behavior it proves.
+- Test names say what's being proven, and each test has a one-line docstring
+  stating the behavior it proves.
 - Prefer real behavior to mocks: decorate a small function in the test, call
   it, and count its calls. Mock only what can't be reached otherwise.
 
@@ -90,5 +94,10 @@ where a helper is a documented patch point.
 
 ## Reporting
 
-Report the pass, fail and skip counts, the coverage, which cache and which
-Python and Django versions you ran, and anything you didn't run.
+Report the pass, fail and skip counts honestly, the coverage, which cache and
+which Python and Django versions you ran, and anything you didn't run. Name
+pre-existing failures and separate them from anything your change caused.
+Confirm "pre-existing" by running the test on unchanged code, e.g. a copy of
+the repository in your scratchpad with the changed files replaced by
+`git show HEAD:<path>`: don't assume it. Never `git stash` or `git checkout`
+to do so.
