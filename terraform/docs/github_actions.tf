@@ -8,11 +8,11 @@
 # repository's settings, as the "pypi" environment is.
 #------------------------------------------------------------------------------
 
-# GitHub's OIDC provider is one per AWS account. Other repositories' workflows
-# can trust it too, each with a role of its own.
-resource "aws_iam_openid_connect_provider" "github_actions" {
-  url            = "https://token.actions.githubusercontent.com"
-  client_id_list = ["sts.amazonaws.com"]
+# GitHub's OIDC provider is one per AWS account and already exists, shared by
+# every repository's workflows, each with a role of its own. This stack only
+# reads it.
+data "aws_iam_openid_connect_provider" "github_actions" {
+  url = "https://token.actions.githubusercontent.com"
 }
 
 data "aws_iam_policy_document" "docs_publisher_trust" {
@@ -21,7 +21,7 @@ data "aws_iam_policy_document" "docs_publisher_trust" {
 
     principals {
       type        = "Federated"
-      identifiers = [aws_iam_openid_connect_provider.github_actions.arn]
+      identifiers = [data.aws_iam_openid_connect_provider.github_actions.arn]
     }
 
     condition {
