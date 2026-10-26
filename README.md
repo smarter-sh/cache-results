@@ -4,6 +4,7 @@
 [![Release](https://github.com/smarter-sh/cache-results/actions/workflows/release.yml/badge.svg?branch=main)](https://github.com/smarter-sh/cache-results/actions/workflows/release.yml)
 [![codecov](https://codecov.io/gh/smarter-sh/cache-results/graph/badge.svg)](https://codecov.io/gh/smarter-sh/cache-results)
 [![Latest Release](https://img.shields.io/github/v/release/smarter-sh/cache-results?label=release)](https://github.com/smarter-sh/cache-results/releases)
+[![PyPI](https://img.shields.io/pypi/v/cache-results?logo=pypi&logoColor=white&label=PyPI)](https://pypi.org/project/cache-results/)
 [![PyPI Downloads](https://img.shields.io/pypi/dm/cache-results?label=downloads&logo=pypi&logoColor=white)](https://pypi.org/project/cache-results/)
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue?logo=python&logoColor=white)](https://www.python.org/)
 [![Django](https://img.shields.io/badge/django-4.2%2B-0C4B33?logo=django&logoColor=white)](https://www.djangoproject.com/)

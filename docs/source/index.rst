@@ -1,5 +1,5 @@
-cache-results
-=============
+cache-results |project_version|
+===============================
 
 .. image:: https://img.shields.io/badge/a%20project%20of-The%20Smarter%20Project-2F6FEB
    :target: https://smarter.sh
@@ -16,6 +16,10 @@ cache-results
 .. image:: https://img.shields.io/github/v/release/smarter-sh/cache-results?label=release
    :target: https://github.com/smarter-sh/cache-results/releases
    :alt: Latest release
+
+.. image:: https://img.shields.io/pypi/v/cache-results?logo=pypi&logoColor=white&label=PyPI
+   :target: https://pypi.org/project/cache-results/
+   :alt: PyPI
 
 .. image:: https://img.shields.io/badge/python-3.10%2B-blue?logo=python&logoColor=white
    :alt: Python 3.10+
