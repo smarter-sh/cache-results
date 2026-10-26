@@ -42,3 +42,11 @@ git commit --author="Lawrence McDaniel <lpm0073@gmail.com>" \
   -m "Status: 55 tests pass with 99% coverage on Python 3.14 with Django 6.1.2, on Python 3.10 with Django 4.2.30, on Python 3.12 with Django 5.2.18, and against Redis. mypy with django-stubs finds no issues, the pre-commit hooks pass, and the wheel builds with the package, py.typed and the license. The CI workflow has not run yet. Not yet done: the Sphinx documentation site, and the semantic-release and PyPI publishing workflows." \
   -m "Co-authored-by: Claude <noreply@anthropic.com>"
 ```
+
+Notes on the format:
+
+- A bullet list goes in a single `-m` with real newlines between bullets. A
+  paragraph gets its own `-m`.
+- Inner double quotes are escaped (`\"data\"`). Backticks are avoided
+  altogether.
+- The header is within 72 characters, measured with `wc -c`.

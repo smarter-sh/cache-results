@@ -33,12 +33,24 @@ def make_key(func: Callable, args: tuple, kwargs: dict, encoder: type[CacheKeyEn
 - `:return:` says what the value means, including `None` cases, with `:rtype:`.
 - `:raises X:` for each exception a caller should handle.
 - Never Google style (`Args:`).
+- **`:type:` and `:rtype:` repeat the annotation** (ADR-014): Smarter omits
+  them because it runs `sphinx_autodoc_typehints`; this package doesn't, so
+  the fields are where the reference gets its types. Change both in the same
+  edit, and spell them as the annotation does (`float | None`). Older fields
+  say `Optional[float]`; update one when you touch it.
+- An unannotated function's `:type:` and `:rtype:` are its only types, e.g.
+  `LazyCache.cache` in `lazy.py`. Annotate it too (`cache-results-typing`).
+- Indent continuation lines by four spaces.
 
 ## Layout (pydocstringformatter enforces it)
 
 - Opening `"""` on its own line, then a **one-line summary ending with a
   period**, a blank line, then the body. A two-line summary is mangled: the
-  formatter puts a period at the end of the first line.
+  formatter puts a period at the end of the first line. Put the whole first
+  sentence on the summary line, however long.
+- A body paragraph starts with a capital letter. One that starts lower case
+  usually means a summary was split.
+- One blank line between paragraphs, and between the body and the fields.
 - **pydocstringformatter capitalizes the first word.** A module docstring that
   starts with `cache_results.keys` becomes `Cache_results.keys`. Start module
   docstrings with a sentence ("Cache keys for the `@cache_results`
@@ -53,6 +65,9 @@ def make_key(func: Callable, args: tuple, kwargs: dict, encoder: type[CacheKeyEn
 - **The decorator's docstring is the user manual**: what it caches, the
   argument rules, the `class_name` trap, concurrency, async, every option.
   Keep it in step with the README.
+- **Functions and methods** cover purpose, parameters, return value,
+  exceptions, and side effects: cache reads and writes, locks taken, and log
+  messages.
 - **Say why** when it isn't obvious, e.g. why `django.core.cache` is imported
   inside a function, or why a lock isn't striped.
 - **Never put an argument value or a result in an example of a log message.**
@@ -70,7 +85,11 @@ def make_key(func: Callable, args: tuple, kwargs: dict, encoder: type[CacheKeyEn
   :mod:`cache_results.conf`
   ```
 
-  Don't reference Smarter's modules; this package's docs can't resolve them.
+  The `~` shows only the last component. Don't reference Smarter's modules;
+  this package's docs can't resolve them.
+
+- Example code: `.. code-block:: python` (or `console`), a blank line, then
+  indented content.
 
 - Lists and code blocks need a blank line before them.
 

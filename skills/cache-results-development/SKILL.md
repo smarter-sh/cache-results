@@ -66,6 +66,32 @@ PyPI and configures it with its own hooks in `smarter/smarter/lib/cache/hooks.py
     covers what you are changing, and add one, or supersede one, when you make
     a decision of that size. See `cache-results-sphinx-docs`.
 
+## When the user reports that something didn't happen
+
+If the user says that something didn't happen, e.g. "it did not create a
+release", "PyPI still has the old version" or "Smarter still logs the old
+message", that is a problem to fix, not a claim to debate. Don't answer with
+evidence that it did happen somewhere else, e.g. a prerelease on `alpha` or
+TestPyPI when they mean `main` and PyPI, or a release that Smarter's pin
+doesn't use yet. Find out what is missing from their point of view, why, and
+fix it, or hand them the one command or click that fixes it.
+
+## Pattern-first workflow
+
+The package is small and consistent, and almost every change has a precedent.
+
+1. Identify what kind of change it is: a setting or hook, a type the key
+   encoder knows, a wrapper behavior (sync and async), a log message, a test.
+2. Find the existing code of the same kind, and its tests and docs. A sync
+   change usually has an async twin in `decorators.py`.
+3. Copy their structure, naming, docstrings, logging and error handling.
+   Don't introduce a new pattern when one exists.
+4. Make the change, then its tests, docstrings, README and docs.
+5. Run the hooks and the tests, and fix what they find.
+
+When existing code disagrees with these skills, the code that is newest and
+consistent with most of the package wins. Say so in your summary.
+
 ## Architecture, and why
 
 - **A key is** `KEY_PREFIX` + `v<VERSION>:` + `module.qualname()_` + 32 hex
@@ -120,7 +146,8 @@ logger.error("%s %s() runs uncached: %s", _prefix(), func.__qualname__, reason)
 
 - Every message starts with `_prefix(event)`, which `CACHE_RESULTS["LOG_PREFIX"]`
   formats (Smarter colors it), then the unformatted function name with `()`.
-- %-style arguments, never f-strings.
+- %-style arguments, never f-strings: a message that isn't emitted is never
+  formatted, which matters on a path as hot as a cache read.
 - Levels: hits, misses and invalidations at `info` only when logging is
   enabled, otherwise `debug`. A key failure is an `error` once per process for
   each function and reason (`_key_errors_logged`), then `debug`, so that a hot
@@ -138,6 +165,17 @@ django-waffle and Pydantic. **Never add them here**: a hook that needs another
 library belongs to the project that uses that library. A release reaches
 Smarter when its pin is bumped (`cache-results-release`).
 
+To see how a change here lands there, read the local checkout `../smarter`
+(read only, unless the user asks you to change it), not GitHub. First check
+that it is current:
+`../smarter/skills/smarter-project-repositories/scripts/repos-status.sh smarter`
+(read only: its branch, uncommitted changes, and whether it matches its
+remote). A checkout that is behind can mislead you. Say so, and give the user
+the `git -C ../smarter pull` to run; rule 1 applies there too. Smarter has its
+own `CLAUDE.md` and skills: read them before changing anything there, and
+follow their rules, e.g. its tests run in its Docker containers, not on the
+host.
+
 ## Which skill to load
 
 | Task                                                         | Skill                        |
@@ -153,7 +191,9 @@ Smarter when its pin is bumped (`cache-results-release`).
 ## Definition of done
 
 - The change follows the existing code, and keeps rules 3 to 6.
-- Tests cover it; `make test`, `make test-redis` and `make coverage` pass.
+- Tests cover it, and you ran `make test`, `make test-redis` and
+  `make coverage` yourself. Report failures honestly, including pre-existing
+  ones.
 - `make typecheck` and the pre-commit hooks pass.
 - Public objects have reST docstrings, and the README describes any change a
   user can see.

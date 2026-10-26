@@ -17,6 +17,12 @@ without Smarter's aliases: this package depends only on Django.
   in annotations; write the new ones to begin with.
 - In an **expression**, e.g. `cast(Optional[float], value)`, the `typing` form
   stays: pyupgrade leaves it, and it is what the code means at runtime.
+- A **quoted forward reference** stays `Optional["BaseCache"]`, because
+  `"BaseCache" | None` fails at runtime unless the module starts with
+  `from __future__ import annotations`.
+- **Annotate every function and method** (ADR-015). Some in `lazy.py` and
+  `decorators.py` (`LazyCache.get()`, `get_cache()`) still aren't; annotate
+  them when you touch them.
 
 ## When `Any` is acceptable
 
@@ -28,6 +34,20 @@ Only when the value really can be anything:
 
 Otherwise list the types. A setting's value is `str | object | None`, not
 `Any`. Avoid `Optional[Any]`: it says no more than `Any`.
+
+- **A value that is only stored, compared or passed on** is `object`, not
+  `Any`: it accepts anything and keeps the checker on. `_aget()`, `wrap()` and
+  `unwrap()` in `decorators.py` do this with cached results.
+- **A return type with a finite set of possibilities** is a union, or
+  `X | None`. If callers must then narrow it, that's the truth; consider
+  splitting the function in two.
+- **A return type that depends on an argument's type** takes `@overload`, or a
+  `TypeVar` (a `ParamSpec` too, for a decorator) for a function that returns
+  what it was given.
+- **A third-party object whose type you didn't look up**, e.g. a cache
+  backend, is `django.core.cache.backends.base.BaseCache`, not `Any`.
+- **`:type ...: Any` or `:rtype: Any`** in a docstring changes with the
+  annotation (`cache-results-docstrings`).
 
 ## Django's types
 
