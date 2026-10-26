@@ -22,16 +22,18 @@ into Smarter, e.g. to bump Smarter's pin of this package or change its hooks.
 Start with `cache-results-development`. It sets out the rules that apply to
 every change, the package's architecture, and which narrower skill to load.
 
-| Skill                        | Use it when                                                                      |
-| ---------------------------- | -------------------------------------------------------------------------------- |
-| `cache-results-development`  | You're making any change. Start here.                                            |
-| `cache-results-testing`      | You're writing or running tests, against either cache, or raising coverage.      |
-| `cache-results-docstrings`   | You're writing docstrings, which become the api reference.                       |
-| `cache-results-typing`       | You're writing type annotations, especially with `Any`.                          |
-| `cache-results-code-quality` | You're about to finish a change and need to run the pre-commit hooks.            |
-| `cache-results-git-commits`  | You've been asked to write a commit message.                                     |
-| `cache-results-release`      | You're working on CI, Codecov, requirements, semantic-release or PyPI.           |
-| `cache-results-sphinx-docs`  | You're editing the docs or ADRs, publishing the site, or changing its Terraform. |
+| Skill                                  | Use it when                                                                      |
+| -------------------------------------- | -------------------------------------------------------------------------------- |
+| `cache-results-development`            | You're making any change. Start here.                                            |
+| `cache-results-testing`                | You're writing or running tests, against either cache, or raising coverage.      |
+| `cache-results-docstrings`             | You're writing docstrings, which become the api reference.                       |
+| `cache-results-typing`                 | You're writing type annotations, especially with `Any`.                          |
+| `cache-results-code-quality`           | You're about to finish a change and need to run the pre-commit hooks.            |
+| `cache-results-git-commits`            | You've been asked to write a commit message.                                     |
+| `cache-results-release`                | You're working on CI, Codecov, requirements, semantic-release or PyPI.           |
+| `cache-results-sphinx-docs`            | You're editing the docs or ADRs, publishing the site, or changing its Terraform. |
+| `blog.smarter.sh-release-announcement` | You're announcing a release on blog.smarter.sh.                                  |
+| `blog.smarter.sh-publish`              | You're publishing or updating a post on blog.smarter.sh yourself.                |
 
 ## Claude Code
 
@@ -69,5 +71,9 @@ A skill is a set of instructions that an agent follows, often without asking.
 - **Skills can carry prompt injection.** Look for instructions unrelated to a
   skill's purpose, new scripts with network calls, and text that tells an agent
   to skip confirmations, hooks or safety rules.
+- **`blog.smarter.sh-publish` signs in to the blog as an administrator.** Its
+  `wp.py` makes network calls to blog.smarter.sh with the credentials in
+  `../smarter/.env`, and publishing is public. The skill publishes only when
+  asked, and uploads a draft otherwise.
 - **Keep secrets out.** This repository is public: no credentials, account ids,
   private hostnames or customer data in a skill or an example.
