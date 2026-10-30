@@ -1,6 +1,6 @@
 # cache-results
 
-[![A project of The Smarter Project](https://img.shields.io/badge/a%20project%20of-The%20Smarter%20Project-2F6FEB)](https://smarter.sh)
+[![A project of The Smarter Project](https://img.shields.io/badge/a%20project%20of-The%20Smarter%20Project-2F6FEB)](https://pypi.org/org/smarter-sh/)
 [![Release](https://github.com/smarter-sh/cache-results/actions/workflows/release.yml/badge.svg?branch=main)](https://github.com/smarter-sh/cache-results/actions/workflows/release.yml)
 [![codecov](https://codecov.io/gh/smarter-sh/cache-results/graph/badge.svg)](https://codecov.io/gh/smarter-sh/cache-results)
 [![Latest Release](https://img.shields.io/github/v/release/smarter-sh/cache-results?label=release)](https://github.com/smarter-sh/cache-results/releases)
@@ -10,6 +10,7 @@
 [![Django](https://img.shields.io/badge/django-4.2%2B-0C4B33?logo=django&logoColor=white)](https://www.djangoproject.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Docs](https://img.shields.io/badge/docs-docs.cache--results.smarter.sh-blue?logo=readthedocs)](https://docs.cache-results.smarter.sh/)
+[![Slack](https://img.shields.io/badge/Slack-The%20Smarter%20Project-4A154B?logo=slack&logoColor=white)](https://join.slack.com/t/thesmarterproject/shared_invite/zt-4f0t6v46q-e2c5Of4hS4fBr_XwfQARCw)
 
 A Django decorator that caches a function's results by its arguments, in any
 Django cache, such as Redis.
