@@ -1,3 +1,10 @@
+## [0.2.1-alpha.1](https://github.com/smarter-sh/cache-results/compare/v0.2.0...v0.2.1-alpha.1) (2026-11-05)
+
+
+### Bug Fixes
+
+* **decorators:** type decorated functions and their invalidate() ([4244b92](https://github.com/smarter-sh/cache-results/commit/4244b92a15ab1ae37fd9fd61f5acb93fa6e5c512))
+
 # [0.2.0](https://github.com/smarter-sh/cache-results/compare/v0.1.1...v0.2.0) (2026-10-25)
 
 
