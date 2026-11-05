@@ -50,6 +50,7 @@ import threading
 import weakref
 from collections.abc import Callable
 from functools import wraps
+from typing import Any, Concatenate, ParamSpec, Protocol, TypeVar, cast, overload
 
 from asgiref.sync import sync_to_async
 from django.apps import apps
@@ -72,6 +73,155 @@ _key_locks_guard = threading.Lock()
 
 # (qualified name, reason) pairs whose key failure has been logged as an error in this process.
 _key_errors_logged: set[tuple[str, str]] = set()
+
+P = ParamSpec("P")
+R = TypeVar("R")
+R_co = TypeVar("R_co", covariant=True)
+T = TypeVar("T")
+T_contra = TypeVar("T_contra", contravariant=True)
+
+
+class CachedFunction(Protocol[P, R_co]):
+    """
+    The type of a function decorated with :func:`cache_results`.
+
+    It is called like the function it decorates, with the same parameters and
+    result, and adds :meth:`invalidate`. For an ``async`` function, calling it
+    returns a coroutine, as the function's own call does, while
+    :meth:`invalidate` stays synchronous.
+    """
+
+    __name__: str
+    __qualname__: str
+
+    @property
+    def __wrapped__(self) -> Callable[P, R_co]:
+        """The decorated function."""
+        ...
+
+    def __call__(self, *args: P.args, **kwargs: P.kwargs) -> R_co:
+        """
+        Return the cached result for these arguments, or compute and cache it.
+
+        :param args: The function's positional arguments.
+        :param kwargs: The function's keyword arguments.
+        :return: The function's result.
+        """
+        ...
+
+    def invalidate(self, *args: P.args, **kwargs: P.kwargs) -> None:
+        """
+        Delete the cached result for these arguments, if there is one.
+
+        :param args: The function's positional arguments.
+        :param kwargs: The function's keyword arguments.
+        """
+        ...
+
+
+class BoundCachedClassMethod(Protocol[T_contra, P, R_co]):
+    """
+    A cached classmethod, read from its class, e.g. ``Report.totals``.
+
+    It is called without ``cls``, like any classmethod. Its
+    :meth:`invalidate` still takes the class first, because it isn't bound:
+    ``Report.totals.invalidate(Report, 2026)``.
+    """
+
+    def __call__(self, *args: P.args, **kwargs: P.kwargs) -> R_co:
+        """
+        Return the cached result for these arguments, or compute and cache it.
+
+        :param args: The classmethod's positional arguments, after ``cls``.
+        :param kwargs: The classmethod's keyword arguments.
+        :return: The classmethod's result.
+        """
+        ...
+
+    def invalidate(self, cls: type[T_contra], /, *args: P.args, **kwargs: P.kwargs) -> None:
+        """
+        Delete the cached result of this class for these arguments, if there is one.
+
+        :param cls: The class whose result to delete.
+        :param args: The classmethod's positional arguments, after ``cls``.
+        :param kwargs: The classmethod's keyword arguments.
+        """
+        ...
+
+
+class CachedClassMethod(Protocol[T_contra, P, R_co]):
+    """
+    The type of a function decorated with :func:`cache_results` whose first parameter is a class.
+
+    Under ``@classmethod`` this is what binds ``cls`` for type checkers: read
+    from its class, it is a :class:`BoundCachedClassMethod`. A plain function
+    whose first parameter is annotated ``type[...]`` gets this type too, and is
+    called with the class, as it is written.
+    """
+
+    __name__: str
+    __qualname__: str
+
+    def __call__(self, cls: type[T_contra], /, *args: P.args, **kwargs: P.kwargs) -> R_co:
+        """
+        Return the cached result for these arguments, or compute and cache it.
+
+        :param cls: The class.
+        :param args: The function's other positional arguments.
+        :param kwargs: The function's keyword arguments.
+        :return: The function's result.
+        """
+        ...
+
+    def invalidate(self, cls: type[T_contra], /, *args: P.args, **kwargs: P.kwargs) -> None:
+        """
+        Delete the cached result for these arguments, if there is one.
+
+        :param cls: The class.
+        :param args: The function's other positional arguments.
+        :param kwargs: The function's keyword arguments.
+        """
+        ...
+
+    def __get__(self, instance: object, owner: type | None = None) -> BoundCachedClassMethod[T_contra, P, R_co]:
+        """
+        Bind ``cls``, as ``@classmethod`` does.
+
+        :param instance: The instance it is read from, if any.
+        :param owner: The class it is read from.
+        :return: The bound classmethod.
+        """
+        ...
+
+
+class CacheResultsDecorator(Protocol):
+    """The decorator that :func:`cache_results` returns."""
+
+    # first, so that a function whose first parameter is a class gets cls bound under @classmethod. It overlaps
+    # the next overload by design.
+    # pylint: disable=W2301
+    @overload
+    def __call__(  # pyright: ignore[reportOverlappingOverload]
+        self, func: Callable[Concatenate[type[T], P], R]
+    ) -> CachedClassMethod[T, P, R]:
+        """Decorate a classmethod, or another function whose first parameter is a class."""
+        ...
+
+    # pylint: disable=W2301
+    @overload
+    def __call__(self, func: Callable[P, R]) -> CachedFunction[P, R]:
+        """Decorate a function."""
+        ...
+
+    # pylint: disable=W2301
+    def __call__(self, func: Callable[..., object]) -> object:
+        """
+        Decorate a function with caching.
+
+        :param func: The function to decorate.
+        :return: The function with caching applied.
+        """
+        ...
 
 
 def _prefix(event: str = "") -> str:
@@ -252,7 +402,9 @@ def _reject_instance_methods(func: Callable) -> None:
         )
 
 
-def cache_results(timeout: float | None = None, cache_key: str | None = None, logging_enabled: bool = False):
+def cache_results(
+    timeout: float | None = None, cache_key: str | None = None, logging_enabled: bool = False
+) -> CacheResultsDecorator:
     """
     A decorator that caches the result of a function based on the arguments passed to it.
 
@@ -321,8 +473,11 @@ def cache_results(timeout: float | None = None, cache_key: str | None = None, lo
         invalidations, as when ``CACHE_RESULTS["LOGGING_ENABLED"]`` is true.
         Results are never logged, only their type. Defaults to ``False``.
     :type logging_enabled: bool
-    :return: The decorated function with caching applied.
-    :rtype: Callable
+    :return: A decorator that returns the function with caching applied, typed
+        with the function's own parameters and result, plus ``invalidate()``:
+        a :class:`CachedFunction`, or a :class:`CachedClassMethod` when its
+        first parameter is a class.
+    :rtype: CacheResultsDecorator
     :raises TypeError: If the decorated function is an instance method.
 
     .. note::
@@ -340,7 +495,7 @@ def cache_results(timeout: float | None = None, cache_key: str | None = None, lo
         expensive_function.invalidate(1, 2)  # Invalidate cache for specific arguments
     """
 
-    def decorator(func: Callable) -> Callable:
+    def decorator(func: Callable[..., object]) -> object:
         _reject_instance_methods(func)
         qualname = func.__qualname__
 
@@ -411,6 +566,7 @@ def cache_results(timeout: float | None = None, cache_key: str | None = None, lo
                 return True
             return False
 
+        wrapper: Callable[..., object]
         if inspect.iscoroutinefunction(func):
 
             @wraps(func)
@@ -567,10 +723,12 @@ def cache_results(timeout: float | None = None, cache_key: str | None = None, lo
                     "%s no cache entry found for %s (nothing to invalidate)", invalidate_prefix, computed_cache_key
                 )
 
-        wrapper.invalidate = invalidate  # type: ignore[attr-defined]
+        # a function object takes any attribute, but its type declares none. CachedFunction declares this one.
+        cast(Any, wrapper).invalidate = invalidate
         return wrapper
 
-    return decorator
+    # the wrappers take and return what func does, and have invalidate(), as CacheResultsDecorator declares.
+    return cast(CacheResultsDecorator, decorator)
 
 
-__all__ = ["cache_results"]
+__all__ = ["BoundCachedClassMethod", "CacheResultsDecorator", "CachedClassMethod", "CachedFunction", "cache_results"]

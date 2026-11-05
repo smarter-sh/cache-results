@@ -66,6 +66,12 @@ make typecheck          # mypy, with django-stubs and tests.settings
 git diff --name-only -- '*.py' | xargs grep -nE '(: *|-> *|\[)Any\b'
 ```
 
-`make typecheck` must pass. CI doesn't run it yet, so run it yourself after
-changing annotations. For each `Any` the grep finds, ask whether you can list
+`make typecheck` must pass, and CI's Type check job runs it, also as Python
+3.10. Run it yourself after changing annotations. It also checks
+`tests/typecheck/`, the types users see: a decorated function keeps its
+signature and has `invalidate()` (`CachedFunction`, and `CachedClassMethod`,
+whose `__get__` binds `cls` under `@classmethod`). There, each call that must
+be flagged carries a `# type: ignore[...]`, which `warn_unused_ignores` fails
+if it isn't. The same file should pass Pyright (Pylance):
+`npx pyright --pythonpath venv/bin/python tests/typecheck src/cache_results`. For each `Any` the grep finds, ask whether you can list
 the types instead.

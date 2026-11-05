@@ -92,6 +92,7 @@ Features
    guide/invalidation
    guide/async
    guide/classmethods
+   guide/type-checking
    guide/settings
    guide/logging
    guide/lazy-cache

@@ -118,6 +118,22 @@ jobs:
           fail_ci_if_error: false
           token: ${{ secrets.CODECOV_TOKEN }}
 
+  typecheck:
+    name: Type check
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.14"
+      - name: Install
+        run: pip install -e ".[typing]"
+      - name: Check the type annotations, and the types users see in tests/typecheck
+        run: |
+          mypy
+          mypy --python-version 3.10
+
   docs:
     name: Docs
     runs-on: ubuntu-latest
@@ -148,7 +164,7 @@ jobs:
 
   build:
     name: Build
-    needs: [lint, test, redis, docs, terraform]
+    needs: [lint, test, redis, typecheck, docs, terraform]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
