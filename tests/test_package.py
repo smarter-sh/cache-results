@@ -17,7 +17,16 @@ class TestPackage(SimpleTestCase):
         self.assertTrue(issubclass(cache_results.CacheKeyArgumentError, TypeError))
         self.assertEqual(
             sorted(cache_results.__all__),
-            ["CacheKeyArgumentError", "CacheKeyEncoder", "LazyCache", "__version__", "cache_results", "lazy_cache"],
+            [
+                "CacheKeyArgumentError",
+                "CacheKeyEncoder",
+                "CachedClassMethod",
+                "CachedFunction",
+                "LazyCache",
+                "__version__",
+                "cache_results",
+                "lazy_cache",
+            ],
         )
         self.assertIsInstance(cache_results.lazy_cache, cache_results.LazyCache)
 

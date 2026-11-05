@@ -68,10 +68,14 @@ branch = true
 [tool.coverage.report]
 show_missing = true
 fail_under = 95
+# the bodies of the type checkers' Protocols in decorators.py, which never run.
+exclude_also = ['^\s*\.\.\.$']
 
 [tool.mypy]
 plugins = ["mypy_django_plugin.main"]
-files = ["src/cache_results"]
+files = ["src/cache_results", "tests/typecheck"]
+# tests/typecheck marks each call that must be flagged with an ignore, which fails the check if it isn't.
+warn_unused_ignores = true
 
 [tool.django-stubs]
 django_settings_module = "tests.settings"

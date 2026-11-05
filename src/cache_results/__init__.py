@@ -18,11 +18,22 @@ See :func:`cache_results.decorators.cache_results` for how it works, and
 :data:`lazy_cache` is Django's cache, imported only once Django is ready
 (:mod:`cache_results.lazy`). :func:`cache_results.colors.log_prefix` is a
 ``LOG_PREFIX`` hook that colors log messages by event.
+:class:`CachedFunction` and :class:`CachedClassMethod` are the types of a
+decorated function, for type checkers.
 """
 
 from .__version__ import __version__
-from .decorators import cache_results
+from .decorators import CachedClassMethod, CachedFunction, cache_results
 from .keys import CacheKeyArgumentError, CacheKeyEncoder
 from .lazy import LazyCache, lazy_cache
 
-__all__ = ["CacheKeyArgumentError", "CacheKeyEncoder", "LazyCache", "__version__", "cache_results", "lazy_cache"]
+__all__ = [
+    "CacheKeyArgumentError",
+    "CacheKeyEncoder",
+    "CachedClassMethod",
+    "CachedFunction",
+    "LazyCache",
+    "__version__",
+    "cache_results",
+    "lazy_cache",
+]

@@ -45,6 +45,8 @@ reads and third-party api calls across many application servers.
 - **`None` is cached** like any other result.
 - **`.invalidate(\*args, **kwargs)`\*\* on every decorated function clears the
   entry of those arguments.
+- **Typed.** A decorated function keeps its parameters and result for mypy
+  and Pylance, which also know its `.invalidate()`.
 - **async functions** are cached without blocking the event loop.
 - **Classmethods** are cached per class. Instance methods are refused, because
   `self` would be part of the key.
