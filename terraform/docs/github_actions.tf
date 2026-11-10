@@ -30,10 +30,16 @@ data "aws_iam_policy_document" "docs_publisher_trust" {
       values   = ["sts.amazonaws.com"]
     }
 
+    # the repository uses GitHub's immutable subjects, which name the owner and
+    # repository with their ids, so a renamed or recreated repository can't
+    # assume the role. The name-only form is kept in case they're turned off.
     condition {
       test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = ["repo:${var.github_repository}:environment:${var.github_environment}"]
+      values = [
+        "${var.github_immutable_subject_prefix}:environment:${var.github_environment}",
+        "repo:${var.github_repository}:environment:${var.github_environment}",
+      ]
     }
   }
 }

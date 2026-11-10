@@ -32,6 +32,12 @@ variable "github_repository" {
   default     = "smarter-sh/cache-results"
 }
 
+variable "github_immutable_subject_prefix" {
+  description = "The repository's OIDC subject prefix with immutable subjects on, which names the owner and repository with their numeric ids (gh api repos/OWNER/NAME/actions/oidc/customization/sub)."
+  type        = string
+  default     = "repo:smarter-sh@170533864/cache-results@1433392706"
+}
+
 variable "github_environment" {
   description = "The GitHub environment of the Release workflow's publish-docs job: the only job that can assume the publisher role."
   type        = string
