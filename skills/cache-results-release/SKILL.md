@@ -197,5 +197,5 @@ Smarter only when that pin is bumped, in a commit of Smarter's own
 image runs `manage.py` while it builds, so a Smarter change that needs a new
 api here can't be built until that version is on PyPI. To test it before
 then, build a wheel (`python -m build --wheel`) and `pip install --no-deps`
-it into the running `smarter-app` container
+it into the running `smarter-api` container
 (`../smarter/skills/smarter-docker-environment`).
