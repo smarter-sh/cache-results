@@ -1,9 +1,9 @@
-## [0.2.1-alpha.2](https://github.com/smarter-sh/cache-results/compare/v0.2.1-alpha.1...v0.2.1-alpha.2) (2026-11-24)
+## [0.2.1](https://github.com/smarter-sh/cache-results/compare/v0.2.0...v0.2.1) (2026-11-05)
 
 
 ### Bug Fixes
 
-* **decorators:** run uncached when the cache backend raises ([069de6a](https://github.com/smarter-sh/cache-results/commit/069de6a8f3b54c5d0b5e7c6bb02d78a84c2bc869))
+* **decorators:** type decorated functions and their invalidate() ([4244b92](https://github.com/smarter-sh/cache-results/commit/4244b92a15ab1ae37fd9fd61f5acb93fa6e5c512))
 
 ## [0.2.1-alpha.1](https://github.com/smarter-sh/cache-results/compare/v0.2.0...v0.2.1-alpha.1) (2026-11-05)
 
