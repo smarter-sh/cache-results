@@ -13,6 +13,8 @@ argument-based caching of function results in Django's cache framework.
   function uncached and log an error, rather than be cached under ``str()``.
 - Special handling for functions returning ``None``, using a sentinel value to
   distinguish between a cached ``None`` and a cache miss.
+- A cache backend that raises, e.g. while Redis is unreachable, makes the call
+  run uncached and log a warning, rather than fail.
 - Decorates both regular and ``async`` functions, and classmethods.
 - Within one process, concurrent callers that miss the same key wait for the
   first one to compute it, rather than all computing it.
@@ -73,6 +75,10 @@ _key_locks_guard = threading.Lock()
 
 # (qualified name, reason) pairs whose key failure has been logged as an error in this process.
 _key_errors_logged: set[tuple[str, str]] = set()
+
+# What a cache read returns when the backend raised, e.g. while Redis is unreachable.
+# The call then runs without the cache, as on a miss, but doesn't try to store its result.
+_CACHE_ERROR = object()
 
 P = ParamSpec("P")
 R = TypeVar("R")
@@ -286,42 +292,124 @@ def _has_native_async(cache, method: str) -> bool:
     return getattr(type(cache), method, None) is not getattr(BaseCache, method)
 
 
-async def _aget(key: str, default: object) -> object:
+def _log_cache_error(qualname: str, operation: str, error: Exception) -> None:
     """
-    Read the cache from async code without blocking the event loop.
+    Log that the cache backend raised, so that one call runs without it.
 
-    Uses the backend's own ``aget()`` when it has one, and otherwise runs the
-    synchronous ``get()`` in a worker thread.
+    Only the exception's class is logged: its message can name the cache's
+    host, and the key's arguments are never logged here.
 
+    :param qualname: The decorated function's qualified name.
+    :type qualname: str
+    :param operation: The cache method that raised, e.g. ``"get"``.
+    :type operation: str
+    :param error: The exception the backend raised.
+    :type error: Exception
+    """
+    logger.warning(
+        "%s %s() runs without the cache: the cache's %s() raised %s",
+        _prefix(),
+        qualname,
+        operation,
+        type(error).__name__,
+    )
+
+
+def _get(qualname: str, key: str) -> object:
+    """
+    Read the cache, treating a backend error as a miss.
+
+    :param qualname: The decorated function's qualified name, for the log.
+    :type qualname: str
     :param key: The cache key.
     :type key: str
-    :param default: The value to return on a miss.
-    :type default: object
-    :return: The cached value, or ``default``.
+    :return: The cached value, ``CACHE_MISS_SENTINEL`` on a miss, or
+        ``_CACHE_ERROR`` when the backend raised.
     :rtype: object
     """
-    cache = get_cache()
-    if _has_native_async(cache, "aget"):
-        return await cache.aget(key, default)
-    return await sync_to_async(cache.get, thread_sensitive=False)(key, default)
+    try:
+        return get_cache().get(key, CACHE_MISS_SENTINEL)
+    except Exception as e:  # pylint: disable=broad-exception-caught
+        _log_cache_error(qualname, "get", e)
+        return _CACHE_ERROR
 
 
-async def _aset(key: str, value: object, timeout: float | None) -> None:
+def _set(qualname: str, key: str, value: object, timeout: float | None) -> bool:
     """
-    Write the cache from async code without blocking the event loop.
+    Write the cache, logging rather than raising a backend error.
 
+    :param qualname: The decorated function's qualified name, for the log.
+    :type qualname: str
     :param key: The cache key.
     :type key: str
     :param value: The value to cache.
     :type value: object
     :param timeout: The timeout in seconds.
     :type timeout: Optional[float]
+    :return: Whether the value was stored.
+    :rtype: bool
     """
-    cache = get_cache()
-    if _has_native_async(cache, "aset"):
-        await cache.aset(key, value, timeout)
-        return
-    await sync_to_async(cache.set, thread_sensitive=False)(key, value, timeout)
+    try:
+        get_cache().set(key, value, timeout)
+        return True
+    except Exception as e:  # pylint: disable=broad-exception-caught
+        _log_cache_error(qualname, "set", e)
+        return False
+
+
+async def _aget(qualname: str, key: str) -> object:
+    """
+    Read the cache from async code without blocking the event loop.
+
+    Uses the backend's own ``aget()`` when it has one, and otherwise runs the
+    synchronous ``get()`` in a worker thread. A backend error is a miss, as in
+    :func:`_get`.
+
+    :param qualname: The decorated function's qualified name, for the log.
+    :type qualname: str
+    :param key: The cache key.
+    :type key: str
+    :return: The cached value, ``CACHE_MISS_SENTINEL`` on a miss, or
+        ``_CACHE_ERROR`` when the backend raised.
+    :rtype: object
+    """
+    try:
+        cache = get_cache()
+        if _has_native_async(cache, "aget"):
+            return await cache.aget(key, CACHE_MISS_SENTINEL)
+        return await sync_to_async(cache.get, thread_sensitive=False)(key, CACHE_MISS_SENTINEL)
+    except Exception as e:  # pylint: disable=broad-exception-caught
+        _log_cache_error(qualname, "get", e)
+        return _CACHE_ERROR
+
+
+async def _aset(qualname: str, key: str, value: object, timeout: float | None) -> bool:
+    """
+    Write the cache from async code without blocking the event loop.
+
+    A backend error is logged, not raised, as in :func:`_set`.
+
+    :param qualname: The decorated function's qualified name, for the log.
+    :type qualname: str
+    :param key: The cache key.
+    :type key: str
+    :param value: The value to cache.
+    :type value: object
+    :param timeout: The timeout in seconds.
+    :type timeout: Optional[float]
+    :return: Whether the value was stored.
+    :rtype: bool
+    """
+    try:
+        cache = get_cache()
+        if _has_native_async(cache, "aset"):
+            await cache.aset(key, value, timeout)
+        else:
+            await sync_to_async(cache.set, thread_sensitive=False)(key, value, timeout)
+        return True
+    except Exception as e:  # pylint: disable=broad-exception-caught
+        _log_cache_error(qualname, "set", e)
+        return False
 
 
 def _lock_for(computed_cache_key: str):
@@ -589,15 +677,19 @@ def cache_results(
                 # a None key means the arguments can't be part of a key. _key_for() logged why.
                 if computed_cache_key is None or cache_not_ready():
                     return await func(*args, **kwargs)
-                hit, result = unwrap(await _aget(computed_cache_key, CACHE_MISS_SENTINEL))
+                cached_result = await _aget(qualname, computed_cache_key)
+                if cached_result is _CACHE_ERROR:
+                    # the cache is down, and _aget() logged it. Don't wait on it again to store the result.
+                    return await func(*args, **kwargs)
+                hit, result = unwrap(cached_result)
                 # the logging hooks may query the database, e.g. for a feature flag, which Django
                 # forbids from async code.
                 if hit:
                     await sync_to_async(log_hit)(computed_cache_key, result, args, kwargs)
                     return result
                 result = await func(*args, **kwargs)
-                await _aset(computed_cache_key, wrap(result), resolved_timeout())
-                await sync_to_async(log_store)(computed_cache_key, result, args, kwargs)
+                if await _aset(qualname, computed_cache_key, wrap(result), resolved_timeout()):
+                    await sync_to_async(log_store)(computed_cache_key, result, args, kwargs)
                 return result
 
             wrapper = async_wrapper
@@ -646,20 +738,27 @@ def cache_results(
                 # a None key means the arguments can't be part of a key. _key_for() logged why.
                 if computed_cache_key is None or cache_not_ready():
                     return func(*args, **kwargs)
-                cache = get_cache()
-                hit, result = unwrap(cache.get(computed_cache_key, CACHE_MISS_SENTINEL))
+                cached_result = _get(qualname, computed_cache_key)
+                if cached_result is _CACHE_ERROR:
+                    # the cache is down, and _get() logged it. Don't queue on the key's lock, nor wait on
+                    # the cache again to store the result: each wait could be a socket timeout.
+                    return func(*args, **kwargs)
+                hit, result = unwrap(cached_result)
                 if hit:
                     log_hit(computed_cache_key, result, args, kwargs)
                     return result
                 # Cache miss, boo! Compute it once, while other threads that miss the same key wait.
                 with _lock_for(computed_cache_key):
-                    hit, result = unwrap(cache.get(computed_cache_key, CACHE_MISS_SENTINEL))
+                    cached_result = _get(qualname, computed_cache_key)
+                    if cached_result is _CACHE_ERROR:
+                        return func(*args, **kwargs)
+                    hit, result = unwrap(cached_result)
                     if hit:
                         log_hit(computed_cache_key, result, args, kwargs)
                         return result
                     result = func(*args, **kwargs)
-                    cache.set(computed_cache_key, wrap(result), resolved_timeout())
-                    log_store(computed_cache_key, result, args, kwargs)
+                    if _set(qualname, computed_cache_key, wrap(result), resolved_timeout()):
+                        log_store(computed_cache_key, result, args, kwargs)
                     return result
 
             wrapper = sync_wrapper
@@ -699,12 +798,23 @@ def cache_results(
             computed_cache_key = _key_for(func, args, kwargs, explicit_cache_key)
             if computed_cache_key is None:
                 return
-            cache = get_cache()
-            # one read, rather than has_key() and then get(): an entry that expires, or is evicted,
-            # between the two would be reported as an invalidated None.
-            cached_value = cache.get(computed_cache_key, CACHE_MISS_SENTINEL)
+            try:
+                cache = get_cache()
+                # one read, rather than has_key() and then get(): an entry that expires, or is evicted,
+                # between the two would be reported as an invalidated None.
+                cached_value = cache.get(computed_cache_key, CACHE_MISS_SENTINEL)
+                if cached_value is not CACHE_MISS_SENTINEL:
+                    cache.delete(computed_cache_key)
+            except Exception as e:  # pylint: disable=broad-exception-caught
+                # an entry that survives the outage can be served stale until its timeout.
+                logger.warning(
+                    "%s couldn't invalidate %s: the cache raised %s",
+                    invalidate_prefix,
+                    computed_cache_key,
+                    type(e).__name__,
+                )
+                return
             if cached_value is not CACHE_MISS_SENTINEL:
-                cache.delete(computed_cache_key)
                 # like cache hits, invalidations are logged only when cache logging is on: applying one
                 # manifest invalidates a dozen keys.
                 log = logger.info if log_enabled() else logger.debug

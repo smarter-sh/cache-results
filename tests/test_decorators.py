@@ -12,6 +12,7 @@ from django.core.cache.backends.locmem import LocMemCache
 from django.test import SimpleTestCase, override_settings
 
 from cache_results import cache_results, decorators
+from cache_results.sentinels import CACHE_MISS_SENTINEL
 
 
 @dataclass
@@ -568,3 +569,149 @@ class TestCacheResults(SimpleTestCase):
             self.assertEqual(stored(5), 5)
             self.assertEqual(decorators.get_cache(), results_cache)
         self.assertEqual(len(results_cache._cache), 1)
+
+
+class _DownCache(LocMemCache):
+    """A cache whose every read and write raises, as django-redis does while Redis is unreachable."""
+
+    def __init__(self):
+        super().__init__("down", {})
+
+    def get(self, key, default=None, version=None):
+        raise ConnectionError("Timeout reading from socket")
+
+    def set(self, key, value, timeout=None, version=None):
+        raise ConnectionError("Timeout reading from socket")
+
+    def delete(self, key, version=None):
+        raise ConnectionError("Timeout reading from socket")
+
+
+class _NativeAsyncDownCache(_DownCache):
+    """A down cache with its own async methods."""
+
+    async def aget(self, key, default=None, version=None):
+        raise ConnectionError("Timeout reading from socket")
+
+    async def aset(self, key, value, timeout=None, version=None):
+        raise ConnectionError("Timeout reading from socket")
+
+
+class _SetDownCache(LocMemCache):
+    """A cache that reads, but whose writes raise."""
+
+    def __init__(self):
+        super().__init__("set-down", {})
+
+    def set(self, key, value, timeout=None, version=None):
+        raise ConnectionError("Timeout reading from socket")
+
+
+class TestCacheBackendErrors(SimpleTestCase):
+    """A cache backend that raises makes a call run uncached, rather than fail (ADR-008)."""
+
+    def test_sync_get_error_runs_uncached(self):
+        calls = []
+
+        @cache_results(timeout=60)
+        def resolve(x):
+            calls.append(x)
+            return x + 1
+
+        with (
+            patch.object(decorators, "get_cache", return_value=_DownCache()),
+            self.assertLogs("cache_results.decorators", level="WARNING") as logs,
+        ):
+            self.assertEqual(resolve(1), 2)
+            self.assertEqual(resolve(1), 2)
+        self.assertEqual(calls, [1, 1])
+        output = "\n".join(logs.output)
+        self.assertIn("resolve() runs without the cache: the cache's get() raised ConnectionError", output)
+        # neither the exception's message, which can name the host, nor the arguments are logged.
+        self.assertNotIn("Timeout reading", output)
+        self.assertNotIn("set()", output)
+
+    def test_sync_set_error_returns_result(self):
+        calls = []
+
+        @cache_results(timeout=60, logging_enabled=True)
+        def compute(x):
+            calls.append(x)
+            return None
+
+        with (
+            patch.object(decorators, "get_cache", return_value=_SetDownCache()),
+            self.assertLogs("cache_results.decorators", level="INFO") as logs,
+        ):
+            self.assertIsNone(compute(1))
+        self.assertEqual(calls, [1])
+        output = "\n".join(logs.output)
+        self.assertIn("the cache's set() raised ConnectionError", output)
+        # nothing was stored, so nothing is logged as cached.
+        self.assertNotIn("caching", output)
+
+    def test_sync_get_error_under_lock_runs_uncached(self):
+        """The cache can go down between the first read and the read under the key's lock."""
+        cache = MagicMock()
+        cache.get.side_effect = [CACHE_MISS_SENTINEL, ConnectionError("down")]
+
+        @cache_results(timeout=60)
+        def flaky(x):
+            return x * 3
+
+        with (
+            patch.object(decorators, "get_cache", return_value=cache),
+            self.assertLogs("cache_results.decorators", level="WARNING"),
+        ):
+            self.assertEqual(flaky(2), 6)
+        cache.set.assert_not_called()
+
+    def test_async_get_and_set_errors_run_uncached(self):
+        for down_cache in (_DownCache(), _NativeAsyncDownCache()):
+            with self.subTest(cache=type(down_cache).__name__):
+                calls = []
+
+                @cache_results(timeout=60)
+                async def fetch(x):
+                    calls.append(x)
+                    return x * 10
+
+                with (
+                    patch.object(decorators, "get_cache", return_value=down_cache),
+                    self.assertLogs("cache_results.decorators", level="WARNING") as logs,
+                ):
+                    self.assertEqual(asyncio.run(fetch(3)), 30)
+                    self.assertEqual(asyncio.run(fetch(3)), 30)
+                self.assertEqual(calls, [3, 3])
+                self.assertIn("the cache's get() raised ConnectionError", "\n".join(logs.output))
+
+    def test_async_set_error_returns_result(self):
+        calls = []
+
+        @cache_results(timeout=60)
+        async def fetch_set_down(x):
+            calls.append(x)
+            return x
+
+        with (
+            patch.object(decorators, "get_cache", return_value=_SetDownCache()),
+            self.assertLogs("cache_results.decorators", level="WARNING") as logs,
+        ):
+            self.assertEqual(asyncio.run(fetch_set_down(4)), 4)
+        self.assertEqual(calls, [4])
+        self.assertIn("the cache's set() raised ConnectionError", "\n".join(logs.output))
+
+    def test_invalidate_error_is_logged(self):
+        @cache_results(timeout=60)
+        def gone(x):
+            return x
+
+        with (
+            patch.object(decorators, "get_cache", return_value=_DownCache()),
+            self.assertLogs("cache_results.decorators", level="WARNING") as logs,
+        ):
+            gone.invalidate(1)
+        output = "\n".join(logs.output)
+        self.assertIn("couldn't invalidate", output)
+        self.assertIn("ConnectionError", output)
+        self.assertNotIn("Timeout reading", output)

@@ -54,6 +54,9 @@ reads and third-party api calls across many application servers.
   wait for the first one to compute it.
 - **Safe during startup.** A function called before Django's apps are ready
   runs uncached, rather than initialize the cache framework too early.
+- **Survives a cache outage.** When the cache backend raises, e.g. while Redis
+  is unreachable, the function runs uncached and its result is returned. A
+  warning names the exception's class, never its message or the arguments.
 - **`lazy_cache`**, Django's cache imported only once Django is ready, for
   raw `get()` and `set()`.
 - **Configurable** through one Django setting, `CACHE_RESULTS`.
