@@ -32,13 +32,24 @@ Configuration of the ``@cache_results`` decorator, read from the.
 Callables and classes are given as dotted paths, or as the objects
 themselves. Settings are read on every call, so ``override_settings`` works in
 tests. This module depends only on Django and the standard library.
+
+The ``CACHE_RESULTS_CACHE`` environment variable, a JSON object like ``CACHE``,
+wins over ``CACHE``: a deployment gives one process a cache of its own, e.g. a
+Redis user of its own, without a change to the project's settings:
+
+.. code-block:: console
+
+    CACHE_RESULTS_CACHE='{"BACKEND": "django.core.cache.backends.redis.RedisCache", "LOCATION": "redis://..."}'
 """
 
+import json
+import os
 from collections.abc import Callable, Mapping
 from functools import lru_cache
 from typing import Optional, cast
 
 from django.conf import settings
+from django.core.exceptions import ImproperlyConfigured
 from django.utils.module_loading import import_string
 
 from .keys import CacheKeyEncoder
@@ -46,8 +57,38 @@ from .keys import CacheKeyEncoder
 SETTING_NAME = "CACHE_RESULTS"
 """The name of the Django setting that configures ``@cache_results``."""
 
+ENVIRONMENT_VARIABLE = "CACHE_RESULTS_CACHE"
+"""The environment variable that gives a process a cache of its own, as JSON, like ``CACHE_RESULTS["CACHE"]``."""
+
 LOG_EVENTS = ("hit", "miss", "invalidate", "")
 """The events that a ``LOG_PREFIX`` callable is called with."""
+
+
+@lru_cache(maxsize=8)
+def _cache_from_environment(text: str) -> dict[str, object]:
+    """
+    Parse :data:`ENVIRONMENT_VARIABLE`'s value, once per value.
+
+    The same value returns the same dict, so that each thread keeps the backend it
+    built from it (:mod:`cache_results.backend`). An error names the variable,
+    never its value, which holds the cache's credentials.
+
+    :param text: The variable's value, a JSON object like an entry of ``CACHES``.
+    :type text: str
+    :return: The configuration.
+    :rtype: dict[str, object]
+    :raises ImproperlyConfigured: If the value isn't a JSON object with a ``BACKEND``.
+    """
+    try:
+        config = json.loads(text)
+    except json.JSONDecodeError:
+        # from None: the decode error keeps the whole text, credentials included.
+        raise ImproperlyConfigured(f"{ENVIRONMENT_VARIABLE} is not valid JSON.") from None
+    if not isinstance(config, dict) or "BACKEND" not in config:
+        raise ImproperlyConfigured(
+            f"{ENVIRONMENT_VARIABLE} must be a JSON object configured like an entry of CACHES, with a BACKEND."
+        )
+    return config
 
 
 @lru_cache(maxsize=64)
@@ -117,9 +158,18 @@ class CacheResultsSettings:
         """
         A cache of the package's own, configured like an entry of ``CACHES``, or ``None`` to use ``cache_alias``'s.
 
+        The ``CACHE_RESULTS_CACHE`` environment variable, when it is set, wins over
+        ``CACHE_RESULTS["CACHE"]``: a deployment gives one process a cache of its own
+        without a change to the project's settings.
+
         :rtype: Optional[Mapping[str, object]]
-        :raises TypeError: If it is set to anything but a mapping that names a ``BACKEND``.
+        :raises TypeError: If the setting is anything but a mapping that names a ``BACKEND``.
+        :raises django.core.exceptions.ImproperlyConfigured: If the variable isn't a JSON object with a ``BACKEND``.
         """
+        text = os.environ.get(ENVIRONMENT_VARIABLE, "").strip()
+        if text:
+            config_from_environment = _cache_from_environment(text)
+            return config_from_environment
         config = self._values.get("CACHE")
         if config is None:
             return None

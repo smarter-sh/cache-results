@@ -179,6 +179,15 @@ CACHE_RESULTS = {
 }
 ```
 
+A deployment can give one process that cache without a change to the project's
+settings: the `CACHE_RESULTS_CACHE` environment variable, the same configuration
+as a JSON object, wins over `CACHE`. Keep it in a secret, since it holds the
+cache's credentials.
+
+```console
+CACHE_RESULTS_CACHE='{"BACKEND": "django.core.cache.backends.redis.RedisCache", "LOCATION": "redis://results-user:password@redis:6379/1", "KEY_PREFIX": "results"}'
+```
+
 The first time a process uses the cache of cached results, it writes and reads
 a test key there, and logs an error if it can't: every cached function would
 then run uncached.

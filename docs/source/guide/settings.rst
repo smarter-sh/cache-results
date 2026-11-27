@@ -41,7 +41,9 @@ Entries
     that may read and write only the keys under its ``KEY_PREFIX``, in a process
     whose own Redis user may not write the project's cache. Each thread builds
     its own backend from it, as Django does for ``CACHES``. Anything else than a
-    mapping with a ``BACKEND`` raises ``TypeError``.
+    mapping with a ``BACKEND`` raises ``TypeError``. The
+    ``CACHE_RESULTS_CACHE`` environment variable, when it is set, wins over it
+    (see below).
 
     .. code-block:: python
 
@@ -56,6 +58,25 @@ Entries
     Whichever cache holds cached results, the first time a process uses it,
     it writes and reads a test key there, and logs an error if it can't: every
     cached function would then run uncached. See :mod:`cache_results.backend`.
+
+The ``CACHE_RESULTS_CACHE`` environment variable
+------------------------------------------------
+
+The same configuration as ``CACHE``, as a JSON object, from the environment. It
+wins over ``CACHE``, so that a deployment can give one process a cache of its
+own, e.g. a worker whose Redis user may not write the project's cache, without
+a change to the project's settings: the other processes, which don't set it,
+keep caching where they always have.
+
+.. code-block:: console
+
+    CACHE_RESULTS_CACHE='{"BACKEND": "django.core.cache.backends.redis.RedisCache", "LOCATION": "redis://results-user:password@redis:6379/1", "KEY_PREFIX": "results"}'
+
+Empty or unset, it is ignored. A value that isn't a JSON object with a
+``BACKEND`` raises ``ImproperlyConfigured``, whose message names the variable,
+never its value, which holds the cache's credentials: keep it in a secret, e.g.
+a Kubernetes Secret, rather than in a plain manifest. It is parsed once per
+value.
 
 ``TIMEOUT``
     The timeout, in seconds, of a decorated function that names none. Default:

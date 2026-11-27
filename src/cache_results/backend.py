@@ -18,7 +18,10 @@ own Redis url, credentials and key prefix:
 
 The project's own caches are then left as they are. A process whose Redis user
 may not touch the project's cache, for instance one that runs untrusted code,
-can cache results in keys of its own, with a user of its own.
+can cache results in keys of its own, with a user of its own. The
+``CACHE_RESULTS_CACHE`` environment variable, the same configuration as JSON,
+wins over the setting, so that a deployment gives that one process its cache
+without a change to the project's settings (:mod:`cache_results.conf`).
 
 The first time a process uses the cache, it writes and reads a test key in it,
 and logs an error if it can't: then every cached function would run uncached.
