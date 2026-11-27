@@ -10,6 +10,7 @@ defaults below.
     # settings.py
     CACHE_RESULTS = {
         "CACHE_ALIAS": "default",
+        "CACHE": None,
         "TIMEOUT": 3600,
         "KEY_PREFIX": "",
         "VERSION": None,
@@ -31,6 +32,30 @@ Entries
     The name, in your ``CACHES`` setting, of the cache that holds cached results.
     Default: ``"default"``. A cache of their own lets you clear cached results
     without clearing sessions or anything else.
+
+``CACHE``
+    A cache of the package's own, configured like an entry of ``CACHES``:
+    ``BACKEND``, ``LOCATION``, ``KEY_PREFIX``, ``OPTIONS`` and the rest. When it
+    is set, cached results go there, and ``CACHE_ALIAS`` is not used. Default:
+    none. It gives the decorator a connection of its own, e.g. a Redis user
+    that may read and write only the keys under its ``KEY_PREFIX``, in a process
+    whose own Redis user may not write the project's cache. Each thread builds
+    its own backend from it, as Django does for ``CACHES``. Anything else than a
+    mapping with a ``BACKEND`` raises ``TypeError``.
+
+    .. code-block:: python
+
+        CACHE_RESULTS = {
+            "CACHE": {
+                "BACKEND": "django.core.cache.backends.redis.RedisCache",
+                "LOCATION": "redis://results-user:password@redis:6379/1",
+                "KEY_PREFIX": "results",
+            },
+        }
+
+    Whichever cache holds cached results, the first time a process uses it,
+    it writes and reads a test key there, and logs an error if it can't: every
+    cached function would then run uncached. See :mod:`cache_results.backend`.
 
 ``TIMEOUT``
     The timeout, in seconds, of a decorated function that names none. Default:

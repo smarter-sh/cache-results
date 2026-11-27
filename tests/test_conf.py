@@ -28,12 +28,23 @@ class TestCacheResultsSettings(SimpleTestCase):
     def test_defaults(self):
         """Without the setting: the default cache and its timeout, no prefix, the strict encoder, no logs."""
         self.assertEqual(cache_results_settings.cache_alias, "default")
+        self.assertIsNone(cache_results_settings.cache)
         self.assertIs(cache_results_settings.timeout, DEFAULT_TIMEOUT)
         self.assertEqual(cache_results_settings.key_prefix, "")
         self.assertIs(cache_results_settings.key_encoder, CacheKeyEncoder)
         self.assertFalse(cache_results_settings.logging_enabled)
         self.assertFalse(cache_results_settings.verbose_logging)
         self.assertEqual(cache_results_settings.log_prefix("prefix", "hit"), "prefix")
+
+    def test_cache(self):
+        """A cache of the package's own is configured like an entry of CACHES, with a BACKEND."""
+        own = {"BACKEND": "django.core.cache.backends.locmem.LocMemCache", "KEY_PREFIX": "own"}
+        with override_settings(CACHE_RESULTS={"CACHE": own}):
+            self.assertEqual(cache_results_settings.cache, own)
+        for invalid in ("redis://redis:6379/1", {"LOCATION": "redis://redis:6379/1"}):
+            with self.subTest(invalid=invalid), override_settings(CACHE_RESULTS={"CACHE": invalid}):
+                with self.assertRaises(TypeError):
+                    _ = cache_results_settings.cache
 
     @override_settings(CACHE_RESULTS={"KEY_PREFIX": "app:", "VERSION": 3, "TIMEOUT": 10, "CACHE_ALIAS": "results"})
     def test_values(self):

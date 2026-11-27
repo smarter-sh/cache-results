@@ -34,8 +34,13 @@ does.
 Checks on first use
 -------------------
 
-On first use, ``lazy_cache`` writes and reads a test key, and logs an error if
-the cache can't be read or written. It warns when the ``default`` cache is a
+On first use, ``lazy_cache`` warns when the ``default`` cache is a
 local-memory or dummy backend, which keep nothing across processes and are
 usually a misconfiguration in production. Its messages go to the
 ``cache_results.lazy`` logger, formatted by ``LOG_PREFIX``.
+
+It writes nothing to check the cache: the project's cache may be one that the
+process may only read, e.g. as a Redis user that may read some keys and write
+none. The cache of cached results, which ``@cache_results`` writes, is checked
+instead, with a test key, the first time a process uses it (see
+:mod:`cache_results.backend` and the ``CACHE`` entry of :doc:`settings`).

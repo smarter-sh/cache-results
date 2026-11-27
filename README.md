@@ -137,6 +137,9 @@ Every entry of the `CACHE_RESULTS` setting is optional:
 CACHE_RESULTS = {
     # the CACHES alias that holds cached results.
     "CACHE_ALIAS": "default",
+    # or a cache of the package's own, configured like an entry of CACHES, e.g.
+    # with its own Redis url, credentials and KEY_PREFIX. It replaces CACHE_ALIAS.
+    "CACHE": None,
     # the default timeout, in seconds, of a decorated function that names none.
     # Unset, it is the cache alias's own TIMEOUT.
     "TIMEOUT": 3600,
@@ -162,6 +165,24 @@ CACHE_RESULTS = {
 Callables and classes are given as dotted paths or as the objects themselves.
 Settings are read on every call, so `override_settings` works in tests.
 
+`CACHE` gives the decorator a Redis connection of its own, independent of the
+project's caches, e.g. in a process whose own Redis user may not write the
+project's cache:
+
+```python
+CACHE_RESULTS = {
+    "CACHE": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": "redis://results-user:password@redis:6379/1",
+        "KEY_PREFIX": "results",
+    },
+}
+```
+
+The first time a process uses the cache of cached results, it writes and reads
+a test key there, and logs an error if it can't: every cached function would
+then run uncached.
+
 ## lazy_cache
 
 For raw `get()` and `set()`, use `lazy_cache` in place of
@@ -176,8 +197,9 @@ cache.set("my_key", "my_value", timeout=300)
 cache.get("my_key")  # "my_value"
 ```
 
-On first use it checks the cache, and warns when the `default` cache is a
-local-memory or dummy backend.
+On first use it warns when the `default` cache is a local-memory or dummy
+backend. It writes nothing to check it: the project's cache may be one that the
+process may only read.
 
 ## Decorator options
 

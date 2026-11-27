@@ -4,6 +4,7 @@ from unittest.mock import patch
 
 from django.core.cache import caches
 from django.core.cache.backends.locmem import LocMemCache
+from django.core.exceptions import AppRegistryNotReady
 from django.test import SimpleTestCase
 
 from cache_results import lazy_cache
@@ -31,6 +32,15 @@ class TestLazyCache(SimpleTestCase):
             apps.ready = False
             self.assertIsNone(lazy.cache)
             self.assertFalse(lazy.ready)
+        self.assertIsNone(lazy._cache)  # pylint: disable=protected-access
+
+    def test_a_method_before_apps_are_ready(self):
+        """A method used before Django's apps are ready raises AppRegistryNotReady, rather than touch the cache."""
+        lazy = LazyCache()
+        with patch("cache_results.lazy.apps") as apps, self.assertLogs("cache_results.lazy", "WARNING"):
+            apps.ready = False
+            with self.assertRaises(AppRegistryNotReady):
+                lazy.get("k")
         self.assertIsNone(lazy._cache)  # pylint: disable=protected-access
 
     def test_get_set_delete(self):
@@ -90,21 +100,17 @@ class TestLazyCache(SimpleTestCase):
         self.assertIsNone(lazy_cache.get("k"))
         self.assertIsNone(lazy_cache.close())
 
-    def test_first_use_checks_the_cache(self):
-        """On first use the cache is checked, and a local-memory default cache is warned about."""
-        with self.assertLogs("cache_results.lazy", "DEBUG") as logs:
-            cache = LazyCache().cache
-        output = "\n".join(logs.output)
-        if isinstance(cache, LocMemCache):
-            self.assertIn("persists nothing across processes", output)
-        self.assertIn("the cache is ready", output)
-
-    def test_check_reports_a_broken_cache(self):
-        """A cache that loses what was written, or raises, is logged as an error."""
+    def test_first_use_warns_about_a_local_memory_cache(self):
+        """On first use, a local-memory default cache is warned about."""
         lazy = LazyCache()
-        with patch.object(LocMemCache, "get", return_value=None), self.assertLogs("cache_results.lazy", "ERROR"):
-            lazy._check(LocMemCache("broken", {}))  # pylint: disable=protected-access
-        with patch.object(LocMemCache, "set", side_effect=ConnectionError("down")):
-            with self.assertLogs("cache_results.lazy", "ERROR") as logs:
-                lazy._check(LocMemCache("broken", {}))  # pylint: disable=protected-access
-        self.assertIn("down", "\n".join(logs.output))
+        with self.assertLogs("cache_results.lazy", "WARNING") as logs:
+            lazy._check(LocMemCache("local", {}))  # pylint: disable=protected-access
+        self.assertIn("persists nothing across processes", "\n".join(logs.output))
+
+    def test_first_use_writes_nothing(self):
+        """The project's cache may be read-only to this process: its first use writes no test key."""
+        lazy = LazyCache()
+        with patch.object(LocMemCache, "set", side_effect=PermissionError("read-only")) as cache_set:
+            with self.assertNoLogs("cache_results.lazy", "ERROR"):
+                lazy._check(LocMemCache("read-only", {}))  # pylint: disable=protected-access
+        cache_set.assert_not_called()

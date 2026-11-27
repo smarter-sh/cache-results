@@ -52,14 +52,20 @@ import threading
 import weakref
 from collections.abc import Callable
 from functools import wraps
-from typing import Any, Concatenate, ParamSpec, Protocol, TypeVar, cast, overload
+from typing import TYPE_CHECKING, Any, Concatenate, ParamSpec, Protocol, TypeVar, cast, overload
 
 from asgiref.sync import sync_to_async
 from django.apps import apps
 
+from .backend import results_cache
 from .conf import cache_results_settings
 from .keys import describe_key_error, make_key
 from .sentinels import CACHE_MISS_SENTINEL, CACHE_NONE_SENTINEL
+
+if TYPE_CHECKING:
+    # only for annotations: importing django.core.cache at runtime, before Django is
+    # ready, can leave its caches on the wrong backend.
+    from django.core.cache.backends.base import BaseCache
 
 logger = logging.getLogger(__name__)
 LOGGER_PREFIX = f"{__name__}.@cache_results()"
@@ -257,18 +263,18 @@ def cache_ready() -> bool:
     return apps.ready
 
 
-def get_cache():
+def get_cache() -> "BaseCache":
     """
-    Return the Django cache that holds cached results, from ``CACHE_RESULTS["CACHE_ALIAS"]``.
+    Return the cache that holds cached results: :func:`cache_results.backend.results_cache`.
 
-    Call it only once :func:`cache_ready` is True.
+    It is ``CACHE_RESULTS["CACHE"]``, a cache of the package's own, when that is
+    set, and otherwise the ``CACHES`` alias ``CACHE_RESULTS["CACHE_ALIAS"]``. Call it
+    only once :func:`cache_ready` is True.
 
     :return: The cache.
     :rtype: django.core.cache.backends.base.BaseCache
     """
-    from django.core.cache import caches  # pylint: disable=import-outside-toplevel
-
-    return caches[cache_results_settings.cache_alias]
+    return results_cache()
 
 
 def _has_native_async(cache, method: str) -> bool:
