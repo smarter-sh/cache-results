@@ -1,5 +1,7 @@
 """Tests of cache_results.backend, the cache that holds cached results: a CACHES alias, or one of its own."""
 
+import json
+import os
 import threading
 from unittest.mock import patch
 
@@ -15,6 +17,7 @@ from cache_results.backend import (
     create_cache,
     results_cache,
 )
+from cache_results.conf import ENVIRONMENT_VARIABLE
 from cache_results.keys import make_key
 
 OWN_CACHE = {
@@ -56,6 +59,25 @@ class TestResultsCache(SimpleTestCase):
         self.assertEqual(own.key_prefix, "own")
         key = make_key(double.__wrapped__, (21,), {})
         self.assertEqual(own.get(key), 42)
+        self.assertIsNone(caches["default"].get(key))
+
+    def test_a_cache_of_its_own_from_the_environment(self):
+        """With only CACHE_RESULTS_CACHE set, as a deployment sets it for one process, results go to that cache."""
+        calls = []
+
+        @cache_results(timeout=60)
+        def triple(x: int) -> int:
+            calls.append(x)
+            return x * 3
+
+        with patch.dict(os.environ, {ENVIRONMENT_VARIABLE: json.dumps(OWN_CACHE)}):
+            self.assertEqual(triple(7), 21)
+            self.assertEqual(triple(7), 21)
+            own = results_cache()
+        self.assertEqual(calls, [7])
+        self.assertEqual(own.key_prefix, "own")
+        key = make_key(triple.__wrapped__, (7,), {})
+        self.assertEqual(own.get(key), 21)
         self.assertIsNone(caches["default"].get(key))
 
     def test_one_backend_per_thread_and_setting(self):

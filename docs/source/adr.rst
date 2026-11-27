@@ -30,3 +30,4 @@ the alternatives considered, and its consequences.
    adr/020-lazy-cache-and-colors
    adr/021-publish-docs-on-release
    adr/022-a-cache-of-its-own
+   adr/023-cache-from-the-environment

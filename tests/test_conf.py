@@ -1,9 +1,14 @@
 """Tests of cache_results.conf, the CACHE_RESULTS setting."""
 
+import json
+import os
+from unittest.mock import patch
+
 from django.core.cache.backends.base import DEFAULT_TIMEOUT
+from django.core.exceptions import ImproperlyConfigured
 from django.test import SimpleTestCase, override_settings
 
-from cache_results.conf import cache_results_settings
+from cache_results.conf import ENVIRONMENT_VARIABLE, cache_results_settings
 from cache_results.keys import CacheKeyEncoder
 
 
@@ -45,6 +50,31 @@ class TestCacheResultsSettings(SimpleTestCase):
             with self.subTest(invalid=invalid), override_settings(CACHE_RESULTS={"CACHE": invalid}):
                 with self.assertRaises(TypeError):
                     _ = cache_results_settings.cache
+
+    def test_cache_from_the_environment(self):
+        """CACHE_RESULTS_CACHE, a JSON object like CACHE, wins over the setting; blank, the setting is used."""
+        from_environment = {"BACKEND": "django.core.cache.backends.locmem.LocMemCache", "KEY_PREFIX": "env"}
+        from_setting = {"BACKEND": "django.core.cache.backends.locmem.LocMemCache", "KEY_PREFIX": "setting"}
+        with override_settings(CACHE_RESULTS={"CACHE": from_setting}):
+            with patch.dict(os.environ, {ENVIRONMENT_VARIABLE: json.dumps(from_environment)}):
+                self.assertEqual(cache_results_settings.cache, from_environment)
+                # parsed once per value: the same dict every time, so each thread keeps its backend.
+                self.assertIs(cache_results_settings.cache, cache_results_settings.cache)
+            with patch.dict(os.environ, {ENVIRONMENT_VARIABLE: "  "}):
+                self.assertEqual(cache_results_settings.cache, from_setting)
+        with patch.dict(os.environ, {ENVIRONMENT_VARIABLE: json.dumps(from_environment)}):
+            with override_settings(CACHE_RESULTS=None):
+                self.assertEqual(cache_results_settings.cache, from_environment)
+
+    def test_an_invalid_cache_in_the_environment(self):
+        """Invalid JSON, or no BACKEND, names the variable, never its value, which holds credentials."""
+        for invalid in ('{"LOCATION": "redis://user:secret@redis:6379/1"', '{"LOCATION": "redis://user:secret@redis"}'):
+            with self.subTest(invalid=invalid), patch.dict(os.environ, {ENVIRONMENT_VARIABLE: invalid}):
+                with self.assertRaises(ImproperlyConfigured) as raised:
+                    _ = cache_results_settings.cache
+                self.assertIn(ENVIRONMENT_VARIABLE, str(raised.exception))
+                self.assertNotIn("secret", str(raised.exception))
+                self.assertIsNone(raised.exception.__cause__)
 
     @override_settings(CACHE_RESULTS={"KEY_PREFIX": "app:", "VERSION": 3, "TIMEOUT": 10, "CACHE_ALIAS": "results"})
     def test_values(self):
