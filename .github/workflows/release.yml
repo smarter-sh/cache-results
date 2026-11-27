@@ -19,6 +19,8 @@
 #   verify-pypi        install it back from PyPI, and check the version
 #   publish-docs       the Sphinx site of the release, to docs.cache-results.smarter.sh,
 #                      after PyPI has it (vars.PUBLISH_DOCS)
+#   merge-main         main, merged back into alpha after a release, so that alpha's next
+#                      pull request doesn't conflict on CHANGELOG.md and __version__.py
 #
 # Releasing and publishing are one workflow, so that a version can't be tagged
 # on GitHub and never reach PyPI. Uploads use trusted publishing (OIDC): there
@@ -27,7 +29,8 @@
 # that already exist, so a failed run can be run again.
 #
 # Secrets: CODECOV_TOKEN (CI's coverage upload), and PAT, which semantic-release
-# pushes and releases with, and attach uploads with: GITHUB_TOKEN is read-only.
+# pushes and releases with, attach uploads with, and merge-main pushes with:
+# GITHUB_TOKEN is read-only.
 #
 # publish-docs signs in to AWS with GitHub's OIDC token, as the role that
 # terraform/docs creates for the "docs" environment: there is no AWS key. Its
@@ -103,6 +106,49 @@ jobs:
             echo "- Last release: ${{ steps.semantic.outputs.last_release_version || 'none' }}"
             echo "- Next release: ${{ steps.semantic.outputs.new_release_version || 'none' }}"
           } >> "$GITHUB_STEP_SUMMARY"
+
+  # Both release lines commit CHANGELOG.md and __version__.py: alpha's prereleases, and main's releases.
+  # After a release, alpha's copies differ from main's on the same lines, and its next pull request to
+  # main conflicts on them. Merging main back into alpha right away prevents that, as Smarter's Build
+  # workflow does (merge-main). Only those two files may conflict, and main's side wins for them; any
+  # other conflict is real work on both branches, so the job fails and pushes nothing.
+  merge-main:
+    name: Merge main into alpha
+    needs: release
+    if: github.ref_name == 'main' && needs.release.outputs.published == 'true' && inputs.dry_run != true
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Merge main into alpha, and push
+        env:
+          PAT: ${{ secrets.PAT }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          # origin/main, not the commit that started this run: semantic-release has pushed its
+          # release commit and tag since, and alpha must reach the tag.
+          git fetch origin main alpha
+          git checkout -B alpha origin/alpha
+          message="chore: merge main into alpha [skip ci]"
+          if ! git merge --no-ff -m "$message" origin/main; then
+            release_files="CHANGELOG.md src/cache_results/__version__.py"
+            for file in $(git diff --name-only --diff-filter=U); do
+              case " $release_files " in
+                *" $file "*) ;;
+                *) echo "::error::$file conflicts between main and alpha: merge them by hand."; exit 1 ;;
+              esac
+              # main's side: the release's version and changelog.
+              git checkout --theirs -- "$file"
+              git add -- "$file"
+            done
+            git commit --no-edit
+          fi
+          git push "https://x-access-token:${PAT}@github.com/${REPOSITORY}.git" alpha
 
   dist:
     name: Build distributions
