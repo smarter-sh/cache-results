@@ -1,9 +1,9 @@
-# [0.3.0-alpha.1](https://github.com/smarter-sh/cache-results/compare/v0.2.2-alpha.1...v0.3.0-alpha.1) (2026-11-27)
+## [0.2.2](https://github.com/smarter-sh/cache-results/compare/v0.2.1...v0.2.2) (2026-11-24)
 
 
-### Features
+### Bug Fixes
 
-* **conf:** give cached results a cache of their own ([3e8e9b7](https://github.com/smarter-sh/cache-results/commit/3e8e9b76e0e7dfec8c5d11aa02136982db7cf43d))
+* **decorators:** run uncached when the cache backend raises ([069de6a](https://github.com/smarter-sh/cache-results/commit/069de6a8f3b54c5d0b5e7c6bb02d78a84c2bc869))
 
 ## [0.2.2-alpha.1](https://github.com/smarter-sh/cache-results/compare/v0.2.1...v0.2.2-alpha.1) (2026-11-24)
 
