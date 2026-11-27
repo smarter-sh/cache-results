@@ -14,27 +14,51 @@ imports it only on first use, once Django's apps are ready.
     cache.set("my_key", "my_value", timeout=300)
     cache.get("my_key")  # "my_value"
 
-On first use it also checks the cache: it writes and reads a test key, and
-warns when the ``default`` cache is a local-memory or dummy backend, which is
-usually a misconfiguration in production.
+On first use it warns when the ``default`` cache is a local-memory or dummy
+backend, which is usually a misconfiguration in production. It writes nothing
+to check it: the project's cache may be one that this process may only read.
+The cache of cached results is checked instead, where ``@cache_results`` uses
+it (:mod:`cache_results.backend`).
 """
 
+import enum
 import logging
+from collections.abc import Iterable
+from typing import TYPE_CHECKING, Any
 
 from django.apps import apps
+from django.core.exceptions import AppRegistryNotReady
 
 from .conf import cache_results_settings
+
+if TYPE_CHECKING:
+    # only for annotations: importing django.core.cache at runtime, before Django is
+    # ready, can leave its caches on the wrong backend.
+    from django.core.cache.backends.base import BaseCache
 
 logger = logging.getLogger(__name__)
 LOGGER_PREFIX = f"{__name__}.LazyCache"
 
-_DIAGNOSTIC_KEY = "cache_results.lazy.diagnostic"
 
-_DEFAULT_TIMEOUT = object()
+class _DefaultTimeout(enum.Enum):
+    """
+    The marker of a ``timeout`` that wasn't given, so that the cache's own is used.
+
+    A one-member enum rather than a bare ``object()``: an ``is`` test narrows it
+    away, so type checkers see the ``float | None`` that Django's methods take.
+    """
+
+    CACHE_DEFAULT = "cache default"
+
+
+_DEFAULT_TIMEOUT = _DefaultTimeout.CACHE_DEFAULT
 """The default of every ``timeout``: the cache's own timeout.
 
 ``None``, as in Django, means never expire.
 """
+
+Timeout = float | None | _DefaultTimeout
+"""A ``timeout`` argument: seconds, ``None`` to never expire, or the cache's own when not given."""
 
 _NON_PERSISTENT_BACKENDS = (
     "django.core.cache.backends.locmem.LocMemCache",
@@ -60,11 +84,13 @@ class LazyCache:
     Django's default cache, imported on first use.
 
     Use the module's :data:`lazy_cache` instance. Every method passes its
-    arguments to the method of the same name of ``django.core.cache.cache``.
+    arguments to the method of the same name of ``django.core.cache.cache``,
+    and raises ``AppRegistryNotReady`` if it is called before Django's apps are
+    ready.
     """
 
     def __init__(self) -> None:
-        self._cache = None
+        self._cache: BaseCache | None = None
 
     @property
     def ready(self) -> bool:
@@ -80,7 +106,7 @@ class LazyCache:
         return apps.ready
 
     @property
-    def cache(self):
+    def cache(self) -> "BaseCache | None":
         """
         Import and return ``django.core.cache.cache``, checking it on first use.
 
@@ -103,101 +129,124 @@ class LazyCache:
         self._check(cache)
         return cache
 
-    def _check(self, cache) -> None:
+    def _ready_cache(self) -> "BaseCache":
         """
-        Write and read a test key, and warn when the cache persists nothing.
+        Return :attr:`cache`, for a method that uses it.
+
+        :return: The cache.
+        :rtype: django.core.cache.backends.base.BaseCache
+        :raises AppRegistryNotReady: If Django's apps aren't ready yet, so that there is no cache to use.
+        """
+        cache = self.cache
+        if cache is None:
+            raise AppRegistryNotReady("lazy_cache was used before Django's apps are ready.")
+        return cache
+
+    def _check(self, cache: "BaseCache") -> None:
+        """
+        Warn when the cache persists nothing.
 
         :param cache: The cache.
         :type cache: django.core.cache.backends.base.BaseCache
         """
-        try:
-            cache.set(_DIAGNOSTIC_KEY, "ready", timeout=5)
-            if cache.get(_DIAGNOSTIC_KEY) == "ready":
-                logger.debug("%s the cache is ready.", _prefix("cache"))
-            else:
-                logger.error("%s the cache did not return a test value that was just written.", _prefix("cache"))
-        except Exception as e:  # pylint: disable=broad-except
-            logger.error("%s the cache could not be read or written: %s", _prefix("cache"), e)
-
         backend = f"{type(cache).__module__}.{type(cache).__qualname__}"
         if backend in _NON_PERSISTENT_BACKENDS:
             logger.warning(
                 "%s the default cache is %s, which persists nothing across processes.", _prefix("cache"), backend
             )
 
-    def get(self, key, default=None, version=None):
+    # the cached values are whatever the project stores: Any, as in Django's own cache api.
+    def get(self, key: str, default: Any = None, version: int | None = None) -> Any:
         """Fetch a key, or ``default`` if it is not cached."""
-        return self.cache.get(key, default, version=version)
+        cache = self._ready_cache()
+        return cache.get(key, default, version=version)
 
-    def set(self, key, value, timeout=_DEFAULT_TIMEOUT, version=None):
+    def set(self, key: str, value: Any, timeout: Timeout = _DEFAULT_TIMEOUT, version: int | None = None) -> None:
         """Set a value.
 
         Without ``timeout``, the cache's own timeout is used, and ``None`` never expires.
         """
+        cache = self._ready_cache()
         if timeout is _DEFAULT_TIMEOUT:
-            return self.cache.set(key, value, version=version)
-        return self.cache.set(key, value, timeout=timeout, version=version)
+            cache.set(key, value, version=version)
+        else:
+            cache.set(key, value, timeout=timeout, version=version)
 
-    def add(self, key, value, timeout=_DEFAULT_TIMEOUT, version=None) -> bool:
+    def add(self, key: str, value: Any, timeout: Timeout = _DEFAULT_TIMEOUT, version: int | None = None) -> bool:
         """Set a value only if the key is not cached yet."""
+        cache = self._ready_cache()
         if timeout is _DEFAULT_TIMEOUT:
-            return self.cache.add(key, value, version=version)
-        return self.cache.add(key, value, timeout=timeout, version=version)
+            return cache.add(key, value, version=version)
+        return cache.add(key, value, timeout=timeout, version=version)
 
-    def touch(self, key, timeout=_DEFAULT_TIMEOUT, version=None) -> bool:
+    def touch(self, key: str, timeout: Timeout = _DEFAULT_TIMEOUT, version: int | None = None) -> bool:
         """Give a key a new timeout."""
+        cache = self._ready_cache()
         if timeout is _DEFAULT_TIMEOUT:
-            return self.cache.touch(key, version=version)
-        return self.cache.touch(key, timeout=timeout, version=version)
+            return cache.touch(key, version=version)
+        return cache.touch(key, timeout=timeout, version=version)
 
-    def delete(self, key, version=None) -> bool:
+    def delete(self, key: str, version: int | None = None) -> bool:
         """Delete a key."""
-        return self.cache.delete(key, version=version)
+        cache = self._ready_cache()
+        return cache.delete(key, version=version)
 
-    def has_key(self, key, version=None) -> bool:
+    def has_key(self, key: str, version: int | None = None) -> bool:
         """Whether a key is cached."""
-        return self.cache.has_key(key, version=version)
+        cache = self._ready_cache()
+        return cache.has_key(key, version=version)
 
-    def incr(self, key, delta: int = 1, version=None) -> int:
+    def incr(self, key: str, delta: int = 1, version: int | None = None) -> int:
         """Add ``delta`` to a cached number."""
-        return self.cache.incr(key, delta, version=version)
+        cache = self._ready_cache()
+        return cache.incr(key, delta, version=version)
 
-    def decr(self, key, delta: int = 1, version=None) -> int:
+    def decr(self, key: str, delta: int = 1, version: int | None = None) -> int:
         """Subtract ``delta`` from a cached number."""
-        return self.cache.decr(key, delta, version=version)
+        cache = self._ready_cache()
+        return cache.decr(key, delta, version=version)
 
-    def get_many(self, keys, version=None) -> dict:
+    def get_many(self, keys: Iterable[str], version: int | None = None) -> dict[str, Any]:
         """Fetch several keys, as a dict of those that are cached."""
-        return self.cache.get_many(keys, version=version)
+        cache = self._ready_cache()
+        return cache.get_many(keys, version=version)
 
-    def set_many(self, data: dict, timeout=_DEFAULT_TIMEOUT, version=None) -> list | None:
+    def set_many(
+        self, data: dict[str, Any], timeout: Timeout = _DEFAULT_TIMEOUT, version: int | None = None
+    ) -> list[str]:
         """Set several values.
 
         Returns what the backend does: Django's own backends, the keys that could not be set.
         """
+        cache = self._ready_cache()
         if timeout is _DEFAULT_TIMEOUT:
-            return self.cache.set_many(data, version=version)
-        return self.cache.set_many(data, timeout=timeout, version=version)
+            return cache.set_many(data, version=version)
+        return cache.set_many(data, timeout=timeout, version=version)
 
-    def delete_many(self, keys, version=None) -> None:
+    def delete_many(self, keys: Iterable[str], version: int | None = None) -> None:
         """Delete several keys."""
-        return self.cache.delete_many(keys, version=version)
+        cache = self._ready_cache()
+        cache.delete_many(keys, version=version)
 
-    def incr_version(self, key, delta: int = 1, version=None) -> int:
+    def incr_version(self, key: str, delta: int = 1, version: int | None = None) -> int:
         """Move a key to a higher version."""
-        return self.cache.incr_version(key, delta, version=version)
+        cache = self._ready_cache()
+        return cache.incr_version(key, delta, version=version)
 
-    def decr_version(self, key, delta: int = 1, version=None) -> int:
+    def decr_version(self, key: str, delta: int = 1, version: int | None = None) -> int:
         """Move a key to a lower version."""
-        return self.cache.decr_version(key, delta, version=version)
+        cache = self._ready_cache()
+        return cache.decr_version(key, delta, version=version)
 
     def clear(self) -> None:
         """Delete every key in the cache, not only those of this application."""
-        return self.cache.clear()
+        cache = self._ready_cache()
+        cache.clear()
 
-    def close(self, **kwargs) -> None:
+    def close(self, **kwargs: Any) -> None:
         """Close the connection to the cache."""
-        return self.cache.close(**kwargs)
+        cache = self._ready_cache()
+        cache.close(**kwargs)
 
 
 lazy_cache = LazyCache()

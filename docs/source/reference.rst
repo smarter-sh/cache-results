@@ -7,6 +7,7 @@ The reference is generated from the package's docstrings.
    :maxdepth: 1
 
    reference/decorators
+   reference/backend
    reference/keys
    reference/conf
    reference/sentinels

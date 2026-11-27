@@ -8,6 +8,9 @@ Configuration of the ``@cache_results`` decorator, read from the.
     CACHE_RESULTS = {
         # the CACHES alias that holds cached results.
         "CACHE_ALIAS": "default",
+        # or a cache of the package's own, configured like an entry of CACHES, e.g.
+        # with its own Redis url, credentials and KEY_PREFIX. It replaces CACHE_ALIAS.
+        "CACHE": None,
         # the default timeout, in seconds, of a decorated function that names none.
         # Unset, it is the cache alias's own TIMEOUT.
         "TIMEOUT": 3600,
@@ -31,7 +34,7 @@ themselves. Settings are read on every call, so ``override_settings`` works in
 tests. This module depends only on Django and the standard library.
 """
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from functools import lru_cache
 from typing import Optional, cast
 
@@ -108,6 +111,21 @@ class CacheResultsSettings:
         :rtype: str
         """
         return self._values.get("CACHE_ALIAS", "default")
+
+    @property
+    def cache(self) -> Mapping[str, object] | None:
+        """
+        A cache of the package's own, configured like an entry of ``CACHES``, or ``None`` to use ``cache_alias``'s.
+
+        :rtype: Optional[Mapping[str, object]]
+        :raises TypeError: If it is set to anything but a mapping that names a ``BACKEND``.
+        """
+        config = self._values.get("CACHE")
+        if config is None:
+            return None
+        if not isinstance(config, Mapping) or "BACKEND" not in config:
+            raise TypeError(f"{SETTING_NAME}['CACHE'] must be configured like an entry of CACHES, with a BACKEND.")
+        return config
 
     @property
     def timeout(self) -> float | None:

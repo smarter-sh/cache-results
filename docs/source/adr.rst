@@ -29,3 +29,4 @@ the alternatives considered, and its consequences.
    adr/019-release-on-push
    adr/020-lazy-cache-and-colors
    adr/021-publish-docs-on-release
+   adr/022-a-cache-of-its-own
