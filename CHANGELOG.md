@@ -1,3 +1,10 @@
+# [0.3.0-alpha.1](https://github.com/smarter-sh/cache-results/compare/v0.2.2-alpha.1...v0.3.0-alpha.1) (2026-11-27)
+
+
+### Features
+
+* **conf:** give cached results a cache of their own ([3e8e9b7](https://github.com/smarter-sh/cache-results/commit/3e8e9b76e0e7dfec8c5d11aa02136982db7cf43d))
+
 ## [0.2.2-alpha.1](https://github.com/smarter-sh/cache-results/compare/v0.2.1...v0.2.2-alpha.1) (2026-11-24)
 
 
