@@ -1,9 +1,9 @@
-# [0.3.0-alpha.2](https://github.com/smarter-sh/cache-results/compare/v0.3.0-alpha.1...v0.3.0-alpha.2) (2026-11-27)
+# [0.3.0](https://github.com/smarter-sh/cache-results/compare/v0.2.2...v0.3.0) (2026-11-27)
 
 
 ### Features
 
-* **conf:** read a cache of its own from CACHE_RESULTS_CACHE ([17cac02](https://github.com/smarter-sh/cache-results/commit/17cac026779cc4b9a95e02548c8c10aefed6b42a))
+* **conf:** give cached results a cache of their own ([3e8e9b7](https://github.com/smarter-sh/cache-results/commit/3e8e9b76e0e7dfec8c5d11aa02136982db7cf43d))
 
 ## [0.2.2](https://github.com/smarter-sh/cache-results/compare/v0.2.1...v0.2.2) (2026-11-24)
 
